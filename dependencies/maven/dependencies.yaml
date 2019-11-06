@@ -1,0 +1,21 @@
+options:
+  languages: ["java"]
+  resolverType: coursier
+  resolvers:
+    - id: mavencentral
+      type: default
+      url: https://repo.maven.apache.org/maven2/
+  strictVisibility: true
+  transitivity: runtime_deps
+  versionConflictPolicy: highest
+  thirdPartyDirectory: dependencies/maven/artifacts
+
+
+dependencies:
+  com.typesafe.akka:
+    akka-actor-typed_2.13:
+      version: "2.6.0-RC2"
+      lang: java
+    akka-actor_2.13:
+      version: "2.6.0-RC2"
+      lang: java

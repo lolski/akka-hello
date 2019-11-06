@@ -1,0 +1,6 @@
+bagel get java-default
+bagel info java-default
+bagel search java
+
+
+bazel run //dependencies/maven/util:bazel-deps -- generate -r (pwd) -s  dependencies/maven/dependencies.bzl -d  dependencies/maven/dependencies.yaml
