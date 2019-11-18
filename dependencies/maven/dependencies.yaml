@@ -19,3 +19,7 @@ dependencies:
     akka-actor_2.13:
       version: "2.6.0-RC2"
       lang: java
+  org.zeroturnaround:
+    zt-exec:
+      version: "1.11"
+      lang: java
