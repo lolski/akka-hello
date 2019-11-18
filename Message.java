@@ -29,16 +29,16 @@ public interface Message {
         class Start implements Message {}
 
         class Success implements Message {
-            private ActorRef<Message> job;
+            private String jobName;
             private String output;
 
-            Success(ActorRef<Message> job, String output) {
-                this.job = job;
+            Success(String jobName, String output) {
+                this.jobName = jobName;
                 this.output = output;
             }
 
-            ActorRef<Message> getJob() {
-                return job;
+            String getJobName() {
+                return jobName;
             }
 
             public String getOutput() {
@@ -47,19 +47,19 @@ public interface Message {
         }
 
         class Fail implements Message {
-            private ActorRef<Message> job;
+            private String jobName;
             private String error;
 
-            Fail(ActorRef<Message> job, String error) {
-                this.job = job;
-                this.error = error;
+            Fail(String jobName, String failure) {
+                this.jobName = jobName;
+                this.error = failure;
             }
 
-            ActorRef<Message> getJob() {
-                return job;
+            String getJobName() {
+                return jobName;
             }
 
-            public String getError() {
+            public String getFailure() {
                 return error;
             }
         }

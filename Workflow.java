@@ -5,29 +5,37 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.util.AbstractMap.SimpleImmutableEntry;
 
 public class Workflow {
     private String name;
+    private Map<String, Set<String>> dependsOn;
+    private Map<String, Set<String>> dependedBy;
     private ActorRef<Message> executor;
-    List<String> jobs_ = new ArrayList<>(Arrays.asList("run-grakn-1", "run-grakn-2", "test-performance-big")); // auxillary
-    Set<String> jobs = new HashSet<>(jobs_);
-    List<Map.Entry<String, String>> dependencies = Arrays.asList(
-            new SimpleImmutableEntry<>(jobs_.get(0), jobs_.get(2)),
-            new SimpleImmutableEntry<>(jobs_.get(1), jobs_.get(2))
-    );
 
     Workflow(String name, ActorContext<Void> context) {
         this.name = "performance";
-        this.executor = context.spawn(Executor.create(jobs, dependencies), name);
+        this.dependedBy = Stream.<Map.Entry<String, Set<String>>>of(
+                new SimpleImmutableEntry<>("run-grakn-1", new HashSet<>(Arrays.asList("test-performance-big"))),
+                new SimpleImmutableEntry<>("run-grakn-2", new HashSet<>(Arrays.asList("test-performance-big"))),
+                new SimpleImmutableEntry<>("test-performance-big", new HashSet<>())
+        ).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        this.dependsOn = Stream.<Map.Entry<String, Set<String>>>of(
+                new SimpleImmutableEntry<>("test-performance-big", new HashSet<>(Arrays.asList("run-grakn-1", "run-grakn-2"))),
+                new SimpleImmutableEntry<>("run-grakn-1", new HashSet<>()),
+                new SimpleImmutableEntry<>("run-grakn-2", new HashSet<>())
+        ).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        this.executor = context.spawn(Executor.create(dependsOn, dependedBy, this), name);
     }
 
     void start() {
@@ -43,22 +51,22 @@ public class Workflow {
     }
 
     static class Executor extends AbstractBehavior<Message> {
-        private List<Map.Entry<String, String>> jobs; // name, status
-        private List<Map.Entry<String, String>> dependencies; // x is-depended-by y
+        private Map<String, Set<String>> dependsOn;
+        private Map<String, Set<String>> dependedBy;
+        private Workflow workflow;
+        private Map<String, Object> result;
 
-        private Set<String> nextJobs;
-
-        static Behavior<Message> create(Set<String> jobs, List<Map.Entry<String, String>> dependencies) {
-            return Behaviors.setup(context -> new Executor(jobs, dependencies, context));
+        static Behavior<Message> create(Map<String, Set<String>> dependsOn, Map<String, Set<String>> dependedBy, Workflow workflow) {
+            return Behaviors.setup(context -> new Executor(dependsOn, dependedBy, workflow, context));
         }
 
-        private Executor(Set<String> jobs, List<Map.Entry<String, String>> dependencies, ActorContext<Message> context) {
+        private Executor(Map<String, Set<String>> dependsOn, Map<String, Set<String>> dependedBy, Workflow workflow, ActorContext<Message> context) {
             super(context);
-            this.jobs = jobs.stream().collect();
-            this.dependencies = dependencies;
-            nextJobs = new HashSet<>(jobs);
-            nextJobs.removeAll(dependencies.stream().map(entry -> entry.getValue()).collect(Collectors.toSet()));
-        };
+            this.dependsOn = dependsOn;
+            this.dependedBy = dependedBy;
+            this.workflow = workflow;
+            this.result = new HashMap<>();
+        }
 
         @Override
         public Receive<Message> createReceive() {
@@ -70,22 +78,31 @@ public class Workflow {
         }
 
         private Behavior<Message> onStart() {
-            getNextJobs().forEach(job -> new Job(job, "echo 'hello world'", getContext()));
+            for (Map.Entry<String, Set<String>> runnable: dependsOn.entrySet().stream().filter(entry -> entry.getValue().isEmpty()).collect(Collectors.toSet())) {
+                new Job(runnable.getKey(), "echo 'hello world'", workflow, getContext()).start();
+            }
             return this;
         }
 
         private Behavior<Message> onSuccess(Message.Job.Success msg) {
-            completedJobs.add(new SimpleImmutableEntry<>(msg.getJob(), msg.getOutput()));
-            getNextJobs().forEach(job -> new Job(job, "echo 'hello world'", getContext()));
+            Set<String> jobs = dependedBy.remove(msg.getJobName());
+            jobs.forEach(job -> dependsOn.get(job).remove(msg.getJobName()));
+            result.put(msg.getJobName(), msg);
+            Set<Map.Entry<String, Set<String>>> collect = dependsOn.entrySet().stream().filter(entry -> entry.getValue().isEmpty()).collect(Collectors.toSet());
+            for (Map.Entry<String, Set<String>> runnable: collect) {
+                new Job(runnable.getKey(), "echo 'hello world'", workflow, getContext()).start();
+            }
             return this;
         }
 
         private Behavior<Message> onFail(Message.Job.Fail msg) {
+            Set<String> jobs = dependedBy.get(msg.getJobName());
+            jobs.forEach(job -> dependsOn.get(job).remove(msg.getJobName()));
+            result.put(msg.getJobName(), msg);
+            for (Map.Entry<String, Set<String>> runnable: dependsOn.entrySet().stream().filter(entry -> entry.getValue().isEmpty()).collect(Collectors.toSet())) {
+                new Job(runnable.getKey(), "echo 'hello world'", workflow, getContext()).start();
+            }
             return this;
-        }
-
-        private Set<String> getNextJobs() {
-            return nextJobs;
         }
     }
 }
