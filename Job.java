@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 public class Job {
     private String name;
-    private ActorRef<Executor.Message> executor;
+    private ActorRef<Message> executor;
 
     Job(String name, String script, ActorContext<Void> context) {
         this.name = name;
@@ -28,27 +28,27 @@ public class Job {
         return name;
     }
 
-    ActorRef<Executor.Message> getExecutor() {
+    ActorRef<Message> getExecutor() {
         return executor;
     }
 
     public void dependencies(Set<Job> dependsOn, Set<Job> dependedBy) {
-        Set<ActorRef<Executor.Message>> dependsOn_ = dependsOn.stream().map(Job::getExecutor).collect(Collectors.toSet());
-        Set<ActorRef<Executor.Message>> dependedBy_ = dependedBy.stream().map(Job::getExecutor).collect(Collectors.toSet());
-        getExecutor().tell(new Executor.Message.Dependencies(dependsOn_, dependedBy_));
+        Set<ActorRef<Message>> dependsOn_ = dependsOn.stream().map(Job::getExecutor).collect(Collectors.toSet());
+        Set<ActorRef<Message>> dependedBy_ = dependedBy.stream().map(Job::getExecutor).collect(Collectors.toSet());
+        getExecutor().tell(new Message.Dependencies(dependsOn_, dependedBy_));
     }
 
     public void start() {
-        getExecutor().tell(new Executor.Message.Start());
+        getExecutor().tell(new Message.Start());
     }
 
-    public static class Executor extends AbstractBehavior<Executor.Message> {
+    public static class Executor extends AbstractBehavior<Message> {
         private String name;
         private String script;
-        private Set<ActorRef<Executor.Message>> dependsOn;
-        private Set<ActorRef<Executor.Message>> dependedBy;
+        private Set<ActorRef<Message>> dependsOn;
+        private Set<ActorRef<Message>> dependedBy;
 
-        static Behavior<Executor.Message> create(String name, String script) {
+        static Behavior<Message> create(String name, String script) {
             return Behaviors.setup(context -> new Executor(name, script, context));
         }
 
@@ -59,7 +59,7 @@ public class Job {
         }
 
         @Override
-        public Receive<Executor.Message> createReceive() {
+        public Receive<Message> createReceive() {
             return newReceiveBuilder()
                     .onMessage(Message.Dependencies.class, msg -> onDependencies(msg))
                     .onMessage(Message.Start.class, msg -> onStart())
@@ -68,18 +68,18 @@ public class Job {
                     .build();
         }
 
-        private Behavior<Executor.Message> onDependencies(Message.Dependencies dependencies) {
+        private Behavior<Message> onDependencies(Message.Dependencies dependencies) {
             System.out.println(name + ": job dependencies declared.");
             this.dependsOn = dependencies.getDependsOn();
             this.dependedBy = dependencies.getDependedBy();
             return this;
         }
 
-        private Behavior<Executor.Message> onStart() throws InterruptedException, TimeoutException, IOException {
+        private Behavior<Message> onStart() throws InterruptedException, TimeoutException, IOException {
             System.out.println(name + ": start");
             if (dependsOn.isEmpty()) {
                 System.out.println(name + ": executed");
-                for (ActorRef<Executor.Message> job: dependedBy) {
+                for (ActorRef<Message> job: dependedBy) {
                     String output = "1"; // execute(script, Arrays.asList());
                     job.tell(new Message.Success(this.getContext().getSelf(), output));
                 }
@@ -87,7 +87,7 @@ public class Job {
             return this;
         }
 
-        private Behavior<Executor.Message> onSuccess(ActorRef<Message> job) throws IOException, TimeoutException, InterruptedException {
+        private Behavior<Message> onSuccess(ActorRef<Message> job) throws IOException, TimeoutException, InterruptedException {
             System.out.println(this.name + ": " + job + " succeeded. removing from the list of dependencies.");
             boolean remove = dependsOn.remove(job);
             if (!remove) {
@@ -95,7 +95,7 @@ public class Job {
             }
             if (dependsOn.isEmpty()) {
                 System.out.println(name + ": executed");
-                for (ActorRef<Executor.Message> j: dependedBy) {
+                for (ActorRef<Message> j: dependedBy) {
                     String output = "1"; // execute("", Arrays.asList());
                     j.tell(new Message.Success(job, output));
                 }
@@ -103,7 +103,7 @@ public class Job {
             return this;
         }
 
-        private Behavior<Executor.Message> onFail(ActorRef<Message> job) throws IOException, TimeoutException, InterruptedException {
+        private Behavior<Message> onFail(ActorRef<Message> job) throws IOException, TimeoutException, InterruptedException {
             System.out.println(this.name + ": " + job + " failed. removing from the list of dependencies.");
             boolean remove = dependsOn.remove(job);
             if (!remove) {
@@ -111,7 +111,7 @@ public class Job {
             }
             if (dependsOn.isEmpty()) {
                 System.out.println(name + ": executed");
-                for (ActorRef<Executor.Message> j: dependedBy) {
+                for (ActorRef<Message> j: dependedBy) {
                     String output = "1"; // execute("", Arrays.asList());
                     j.tell(new Message.Success(job, output));
                 }
@@ -121,64 +121,6 @@ public class Job {
 
         private ProcessResult execute(String script, List<String> input) throws IOException, TimeoutException, InterruptedException {
             return new ProcessExecutor().command(Paths.get("/", "tmp", name + ".sh").toAbsolutePath().toString()).execute();
-        }
-
-        public interface Message {
-            class Dependencies implements Message {
-                private final Set<ActorRef<Message>> dependsOn;
-                private final Set<ActorRef<Message>> dependedBy;
-
-                Dependencies(Set<ActorRef<Message>> dependsOn, Set<ActorRef<Message>> dependedBy) {
-                    this.dependsOn = dependsOn;
-                    this.dependedBy = dependedBy;
-                }
-
-                Set<ActorRef<Message>> getDependsOn() {
-                    return dependsOn;
-                }
-
-                Set<ActorRef<Message>> getDependedBy() {
-                    return dependedBy;
-                }
-            }
-
-            class Start implements Message {}
-
-            class Success implements Message {
-                private ActorRef<Message> job;
-                private String output;
-
-                Success(ActorRef<Message> job, String output) {
-                    this.job = job;
-                    this.output = output;
-                }
-
-                ActorRef<Message> getJob() {
-                    return job;
-                }
-
-                public String getOutput() {
-                    return output;
-                }
-            }
-
-            class Fail implements Message {
-                private ActorRef<Message> job;
-                private String error;
-
-                Fail(ActorRef<Message> job, String error) {
-                    this.job = job;
-                    this.error = error;
-                }
-
-                ActorRef<Message> getJob() {
-                    return job;
-                }
-
-                public String getError() {
-                    return error;
-                }
-            }
         }
     }
 }
