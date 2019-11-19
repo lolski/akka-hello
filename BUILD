@@ -1,7 +1,7 @@
 java_binary(
     name = "akka-hello",
     main_class = "Main",
-    srcs = ["Main.java", "Job.java", "Message.java"],
+    srcs = ["Main.java", "Automation.java", "Pipeline.java", "Workflow.java", "Message.java"],
     deps = [
         "//dependencies/maven/artifacts/com/typesafe/akka:akka-actor-typed-2-13",
         "//dependencies/maven/artifacts/com/typesafe/akka:akka-actor-2-13",

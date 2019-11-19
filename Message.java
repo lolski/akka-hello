@@ -3,59 +3,134 @@ import akka.actor.typed.ActorRef;
 import java.util.Set;
 
 public interface Message {
-    class Dependencies implements Message {
-        private final Set<ActorRef<Message>> dependsOn;
-        private final Set<ActorRef<Message>> dependedBy;
+    class Pipeline {
+        static class Start implements Message {}
+    }
 
-        Dependencies(Set<ActorRef<Message>> dependsOn, Set<ActorRef<Message>> dependedBy) {
-            this.dependsOn = dependsOn;
-            this.dependedBy = dependedBy;
+    class WorkflowMsg {
+        static class Dependencies implements Message {
+            private final Set<ActorRef<Message>> dependsOn;
+            private final Set<ActorRef<Message>> dependedBy;
+
+            Dependencies(Set<ActorRef<Message>> dependsOn, Set<ActorRef<Message>> dependedBy) {
+                this.dependsOn = dependsOn;
+                this.dependedBy = dependedBy;
+            }
+
+            Set<ActorRef<Message>> getDependsOn() {
+                return dependsOn;
+            }
+
+            Set<ActorRef<Message>> getDependedBy() {
+                return dependedBy;
+            }
         }
 
-        Set<ActorRef<Message>> getDependsOn() {
-            return dependsOn;
+        static class Start implements Message {}
+        static class Success implements Message {
+            private String name;
+            private ActorRef<Message> executor;
+            private String result;
+
+            Success(String name, ActorRef<Message> executor, String result) {
+                this.name = name;
+                this.executor = executor;
+                this.result = result;
+            }
+
+            public String getName() {
+                return name;
+            }
+
+            public ActorRef<Message> getExecutor() {
+                return executor;
+            }
+
+            public String getResult() {
+                return result;
+            }
         }
 
-        Set<ActorRef<Message>> getDependedBy() {
-            return dependedBy;
+        static class Fail implements Message {
+            private String name;
+            private ActorRef<Message> executor;
+            private String result;
+
+            Fail(String name, ActorRef<Message> executor, String result) {
+                this.name = name;
+                this.executor = executor;
+                this.result = result;
+            }
+
+            public String getName() {
+                return name;
+            }
+
+            public ActorRef<Message> getExecutor() {
+                return executor;
+            }
+
+            public String getResult() {
+                return result;
+            }
         }
     }
 
-    class Start implements Message {}
+    class Job {
+        static class Dependencies implements Message {
+            private final Set<ActorRef<Message>> dependsOn;
+            private final Set<ActorRef<Message>> dependedBy;
 
-    class Success implements Message {
-        private ActorRef<Message> job;
-        private String result;
+            Dependencies(Set<ActorRef<Message>> dependsOn, Set<ActorRef<Message>> dependedBy) {
+                this.dependsOn = dependsOn;
+                this.dependedBy = dependedBy;
+            }
 
-        Success(ActorRef<Message> job, String result) {
-            this.job = job;
-            this.result = result;
+            Set<ActorRef<Message>> getDependsOn() {
+                return dependsOn;
+            }
+
+            Set<ActorRef<Message>> getDependedBy() {
+                return dependedBy;
+            }
         }
 
-        ActorRef<Message> getJob() {
-            return job;
+        static class Start implements Message {}
+
+        static class Success implements Message {
+            private ActorRef<Message> job;
+            private String result;
+
+            Success(ActorRef<Message> job, String result) {
+                this.job = job;
+                this.result = result;
+            }
+
+            ActorRef<Message> getJob() {
+                return job;
+            }
+
+            public String getResult() {
+                return result;
+            }
         }
 
-        public String getResult() {
-            return result;
-        }
-    }
+        static class Fail implements Message {
+            private ActorRef<Message> job;
+            private String result;
 
-    class Fail implements Message {
-        private ActorRef<Message> job;
-        private String result;
+            Fail(ActorRef<Message> job, String result) {
+                this.job = job;
+                this.result = result;
+            }
 
-        Fail(ActorRef<Message> job, String result) {
-            this.job = job;
-            this.result = result;
-        }
+            ActorRef<Message> getJob() {
+                return job;
+            }
 
-        ActorRef<Message> getJob() {
-            return job;
-        }
-
-        public String getResult() {
-            return result;
+            public String getResult() {
+                return result;
+            }
         }
     }
 }

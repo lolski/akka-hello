@@ -14,7 +14,6 @@ import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-
 public class Job {
     private String name;
     private ActorRef<Message> executor;
@@ -35,11 +34,11 @@ public class Job {
     public void dependencies(Set<Job> dependsOn, Set<Job> dependedBy) {
         Set<ActorRef<Message>> dependsOn_ = dependsOn.stream().map(Job::getExecutor).collect(Collectors.toSet());
         Set<ActorRef<Message>> dependedBy_ = dependedBy.stream().map(Job::getExecutor).collect(Collectors.toSet());
-        getExecutor().tell(new Message.Dependencies(dependsOn_, dependedBy_));
+        getExecutor().tell(new Message.Job.Dependencies(dependsOn_, dependedBy_));
     }
 
     public void start() {
-        getExecutor().tell(new Message.Start());
+        getExecutor().tell(new Message.Job.Start());
     }
 
     public static class Executor extends AbstractBehavior<Message> {
@@ -61,14 +60,14 @@ public class Job {
         @Override
         public Receive<Message> createReceive() {
             return newReceiveBuilder()
-                    .onMessage(Message.Dependencies.class, msg -> onDependencies(msg))
-                    .onMessage(Message.Start.class, msg -> onStart())
-                    .onMessage(Message.Success.class, msg -> onSuccess(msg.getJob()))
-                    .onMessage(Message.Fail.class, msg -> onFail(msg.getJob()))
+                    .onMessage(Message.Job.Dependencies.class, msg -> onDependencies(msg))
+                    .onMessage(Message.Job.Start.class, msg -> onStart())
+                    .onMessage(Message.Job.Success.class, msg -> onSuccess(msg.getJob()))
+                    .onMessage(Message.Job.Fail.class, msg -> onFail(msg.getJob()))
                     .build();
         }
 
-        private Behavior<Message> onDependencies(Message.Dependencies dependencies) {
+        private Behavior<Message> onDependencies(Message.Job.Dependencies dependencies) {
             System.out.println(name + ": job dependencies declared.");
             this.dependsOn = dependencies.getDependsOn();
             this.dependedBy = dependencies.getDependedBy();
@@ -81,7 +80,7 @@ public class Job {
                 System.out.println(name + ": executed");
                 for (ActorRef<Message> job: dependedBy) {
                     String output = "1"; // execute(script, Arrays.asList());
-                    job.tell(new Message.Success(this.getContext().getSelf(), output));
+                    job.tell(new Message.Job.Success(this.getContext().getSelf(), output));
                 }
             }
             return this;
@@ -97,7 +96,7 @@ public class Job {
                 System.out.println(name + ": executed");
                 for (ActorRef<Message> j: dependedBy) {
                     String output = "1"; // execute("", Arrays.asList());
-                    j.tell(new Message.Success(job, output));
+                    j.tell(new Message.Job.Success(job, output));
                 }
             }
             return this;
@@ -113,7 +112,7 @@ public class Job {
                 System.out.println(name + ": executed");
                 for (ActorRef<Message> j: dependedBy) {
                     String output = "1"; // execute("", Arrays.asList());
-                    j.tell(new Message.Success(job, output));
+                    j.tell(new Message.Job.Success(job, output));
                 }
             }
             return this;
