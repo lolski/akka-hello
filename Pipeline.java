@@ -17,106 +17,98 @@ import java.util.AbstractMap.SimpleImmutableEntry;
 
 interface Pipeline {
     class Build implements Pipeline {
-        private final String name = "build";
-        private final Set<String> workflows = new HashSet<>(Arrays.asList("correctness", "performance"));
-        private final Set<Map.Entry<String, String>> dependencies = new HashSet<>(Arrays.asList(
-                new AbstractMap.SimpleImmutableEntry<>("correctness", "performance")
-        ));
-        private ActorRef<Message> executor;
-
-        // TODO: take in org, repo, commit
-        Build(ActorContext<String> context) {
-            this.executor = context.spawn(Executor.create(name, workflows, dependencies), name);
-            System.out.println(this + ": created");
-        }
-
-        void start() {
-            // TODO: define workflow dependencies
-            executor.tell(new Message.Pipeline.Start());
-        }
-
-        @Override
-        public String toString() {
-            return name;
-        }
-
         static class Executor extends AbstractBehavior<Message> {
-            private final String name;
-            private final Set<String> workflows;
-            private final Set<Map.Entry<String, String>> dependencies;
-            private Map<String, Workflow> workflowActive = new HashMap<>();
+            // description
+            private final String organisation;
+            private final String repository;
+            private final String commit;
+            private final String name = "build";
+            private final Set<String> workflows = new HashSet<>(Arrays.asList("correctness", "performance"));
+            private final Set<Map.Entry<String, String>> dependencies = new HashSet<>(Arrays.asList(
+                    new AbstractMap.SimpleImmutableEntry<>("correctness", "performance")
+            ));
+
+            private ActorRef<Message> pipelineFactory;
+            private Map<String, ActorRef<Message>> workflowActive = new HashMap<>();
             private Map<String, String> workflowResults = new HashMap<>();
 
-            public static Behavior<Message> create(String name, Set<String> workflows, Set<Map.Entry<String, String>> dependencies) {
-                return Behaviors.setup(context -> new Executor(name, workflows, dependencies, context));
-            }
-
-            private Executor(String name, Set<String> workflows, Set<Map.Entry<String, String>> dependencies, ActorContext<Message> context) {
-                super(context);
-                this.name = name;
-                this.workflows = workflows;
-                this.dependencies = dependencies;
+            static Behavior<Message> create(String organisation, String repository, String commit, ActorRef<Message> pipelineFactory) {
+                return Behaviors.setup(context -> new Executor(organisation, repository, commit, context, pipelineFactory));
             }
 
             @Override
             public Receive<Message> createReceive() {
                 return newReceiveBuilder()
-                        .onMessage(Message.Pipeline.Start.class, msg -> onPipelineStart())
+                        .onMessage(Message.PipelineMsg.Start.class, msg -> onPipelineStart(msg))
                         .onMessage(Message.WorkflowMsg.Success.class, msg -> onWorkflowSuccess(msg))
                         .onMessage(Message.WorkflowMsg.Fail.class, msg -> onWorkflowFail(msg))
                         .build();
             }
 
-            private Behavior<Message> onPipelineStart() {
-                System.out.println(this + ": started");
+            @Override
+            public String toString() {
+                return organisation + "/" + repository + "@" + commit + "/" + name;
+            }
+
+            private Executor(String organisation, String repository, String commit, ActorContext<Message> context, ActorRef<Message> pipelineFactory) {
+                super(context);
+                this.organisation = organisation;
+                this.repository = repository;
+                this.commit = commit;
+                this.pipelineFactory = pipelineFactory;
+            }
+
+            private Behavior<Message> onPipelineStart(Message.PipelineMsg.Start msg) {
+                System.out.println(this + ": started.");
                 workflowActive = createWorkflows(this.workflows, dependencies);
-                workflowActive.values().forEach(Workflow::start);
+
+                workflowActive.values().forEach(e -> e.tell(new Message.WorkflowMsg.Start()));
+                if (workflowResults.size() == workflows.size()) {
+                    System.out.println(this + ": all workflows have completed. terminating...");
+                    getContext().stop(getContext().getSelf());
+                }
                 return this;
             }
 
             private Behavior<Message> onWorkflowSuccess(Message.WorkflowMsg.Success msg) {
-                // TODO: kill, store result, and remove from map
                 workflowActive.remove(msg.getName());
                 workflowResults.put(msg.getName(), msg.getResult());
-                getContext().stop(msg.getExecutor());
+                if (workflowResults.size() == workflows.size()) {
+                    System.out.println(this + ": all workflows have completed. terminating...");
+                    pipelineFactory.tell(new Message.PipelineMsg.Success(name, getContext().getSelf(), "1"));
+                    getContext().stop(getContext().getSelf());
+                }
                 return this;
             }
 
             private Behavior<Message> onWorkflowFail(Message.WorkflowMsg.Fail msg) {
-                // TODO: kill, store result, and remove from map
-                workflowActive.remove(msg.getName());
-                workflowResults.put(msg.getName(), msg.getResult());
-                getContext().stop(msg.getExecutor());
+                // TODO
                 return this;
             }
 
-            private Map<String, Workflow> createWorkflows(Set<String> workflows, Set<Map.Entry<String, String>> dependencies) {
-                Map<String, Workflow> workflowMap = workflows.stream()
-                        .map(name -> new Workflow(this.name, name, getContext()))
-                        .collect(Collectors.toMap(Workflow::getName, value -> value));
+            private Map<String, ActorRef<Message>> createWorkflows(Set<String> workflows, Set<Map.Entry<String, String>> dependencies) {
+                Map<String, ActorRef<Message>> workflowMap = new HashMap<>();
+                for (String workflow: workflows) {
+                    workflowMap.put(workflow, getContext().spawn(Workflow.Executor.create(organisation, repository, commit, this.name, workflow, getContext().getSelf()), workflow));
+                }
 
                 List<Map.Entry<String, String>> dependenciesInverted = dependencies.stream()
                         .map(dep -> new SimpleImmutableEntry<>(dep.getValue(), dep.getKey()))
                         .collect(Collectors.toList());
 
                 for (String workflowName: workflows) {
-                    Workflow workflow = workflowMap.get(workflowName);
-                    Set<Workflow> dependsOn = dependenciesInverted.stream()
+                    ActorRef<Message> workflow = workflowMap.get(workflowName);
+                    Set<ActorRef<Message>> dependsOn = dependenciesInverted.stream()
                             .filter(keyVal -> keyVal.getKey().equals(workflowName))
                             .map(keyVal -> workflowMap.get(keyVal.getValue()))
                             .collect(Collectors.toSet());
-                    Set<Workflow> dependedBy = dependencies.stream()
+                    Set<ActorRef<Message>> dependedBy = dependencies.stream()
                             .filter(keyVal -> keyVal.getKey().equals(workflowName))
                             .map(keyVal -> workflowMap.get(keyVal.getValue()))
                             .collect(Collectors.toSet());
-                    workflow.dependencies(dependsOn, dependedBy);
+                    workflow.tell(new Message.WorkflowMsg.Dependencies(dependsOn, dependedBy));
                 }
                 return workflowMap;
-            }
-
-            @Override
-            public String toString() {
-                return name;
             }
         }
     }

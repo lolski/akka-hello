@@ -14,10 +14,17 @@ options:
 dependencies:
   com.typesafe.akka:
     akka-actor-typed_2.13:
-      version: "2.6.0-RC2"
+      version: "2.6.0"
+      lang: java
+    akka-actor-testkit-typed_2.13:
+      version: "2.6.0"
       lang: java
     akka-actor_2.13:
-      version: "2.6.0-RC2"
+      version: "2.6.0"
+      lang: java
+  junit:
+    junit:
+      version: "4.12"
       lang: java
   org.zeroturnaround:
     zt-exec:
