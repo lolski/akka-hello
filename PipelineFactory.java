@@ -49,14 +49,14 @@ class PipelineFactory {
 
         private Behavior<Message> onPipelineFactoryStart(Message.PipelineFactory.Start msg) {
             // TODO: execute all pipelines, not just build
-            pipelineFactoryStart();
+            pipelineExecuteAll();
             return this;
         }
 
         private Behavior<Message> onPipelineSuccess(Message.PipelineMsg.Success msg) {
             analyses.put(msg.getName(), msg.getResult());
             if (analyses.size() == pipelines.size()) {
-                pipelineSucceeded();
+                pipelineFactorySucceeded();
             }
             return this;
         }
@@ -66,13 +66,13 @@ class PipelineFactory {
             return this;
         }
 
-        private void pipelineFactoryStart() {
+        private void pipelineExecuteAll() {
             System.out.println(this + ": started.");
             ActorRef<Message> build = getContext().spawn(Pipeline.Build.Executor.create(organisation, repository, commit, getContext().getSelf()), pipelines.stream().findFirst().get());
             build.tell(new Message.PipelineMsg.Start());
         }
 
-        private void pipelineSucceeded() {
+        private void pipelineFactorySucceeded() {
             System.out.println(this + ": all pipelines have completed. terminating...");
             getContext().stop(getContext().getSelf());
         }

@@ -59,7 +59,7 @@ interface Pipeline {
 
             private Behavior<Message> onPipelineStart(Message.PipelineMsg.Start msg) {
                 System.out.println(this + ": started.");
-                workflowStart();
+                workflowExecuteAll();
                 if (workflowResults.size() == workflows.size()) {
                     pipelineSucceeded();
                 }
@@ -80,7 +80,7 @@ interface Pipeline {
                 return this;
             }
 
-            private void workflowStart() {
+            private void workflowExecuteAll() {
                 workflowActive = createWorkflows(this.workflows, dependencies);
                 workflowActive.values().forEach(e -> e.tell(new Message.WorkflowMsg.Start()));
             }
