@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import static java.util.HashMap.SimpleImmutableEntry;
+import java.util.AbstractMap.SimpleImmutableEntry;
 
 interface Pipeline {
     class Build implements Pipeline {
@@ -59,12 +59,9 @@ interface Pipeline {
 
             private Behavior<Message> onPipelineStart(Message.PipelineMsg.Start msg) {
                 System.out.println(this + ": started.");
-                workflowActive = createWorkflows(this.workflows, dependencies);
-
-                workflowActive.values().forEach(e -> e.tell(new Message.WorkflowMsg.Start()));
+                workflowStart();
                 if (workflowResults.size() == workflows.size()) {
-                    System.out.println(this + ": all workflows have completed. terminating...");
-                    getContext().stop(getContext().getSelf());
+                    pipelineSucceeded();
                 }
                 return this;
             }
@@ -73,9 +70,7 @@ interface Pipeline {
                 workflowActive.remove(msg.getName());
                 workflowResults.put(msg.getName(), msg.getResult());
                 if (workflowResults.size() == workflows.size()) {
-                    System.out.println(this + ": all workflows have completed. terminating...");
-                    pipelineFactory.tell(new Message.PipelineMsg.Success(name, getContext().getSelf(), "1"));
-                    getContext().stop(getContext().getSelf());
+                    pipelineSucceeded();
                 }
                 return this;
             }
@@ -83,6 +78,17 @@ interface Pipeline {
             private Behavior<Message> onWorkflowFail(Message.WorkflowMsg.Fail msg) {
                 // TODO
                 return this;
+            }
+
+            private void workflowStart() {
+                workflowActive = createWorkflows(this.workflows, dependencies);
+                workflowActive.values().forEach(e -> e.tell(new Message.WorkflowMsg.Start()));
+            }
+
+            private void pipelineSucceeded() {
+                System.out.println(this + ": all workflows have completed. terminating...");
+                pipelineFactory.tell(new Message.PipelineMsg.Success(name, getContext().getSelf(), "1"));
+                getContext().stop(getContext().getSelf());
             }
 
             private Map<String, ActorRef<Message>> createWorkflows(Set<String> workflows, Set<Map.Entry<String, String>> dependencies) {

@@ -49,28 +49,32 @@ class PipelineFactory {
 
         private Behavior<Message> onPipelineFactoryStart(Message.PipelineFactory.Start msg) {
             // TODO: execute all pipelines, not just build
-            System.out.println(this + ": started.");
-            ActorRef<Message> build = getContext().spawn(Pipeline.Build.Executor.create(organisation, repository, commit, getContext().getSelf()), pipelines.stream().findFirst().get());
-            build.tell(new Message.PipelineMsg.Start());
+            pipelineFactoryStart();
             return this;
         }
 
         private Behavior<Message> onPipelineSuccess(Message.PipelineMsg.Success msg) {
             analyses.put(msg.getName(), msg.getResult());
             if (analyses.size() == pipelines.size()) {
-                System.out.println(this + ": all pipelines have completed. terminating...");
-                getContext().stop(getContext().getSelf());
+                pipelineSucceeded();
             }
             return this;
         }
 
         private Behavior<Message> onPipelineFail(Message.PipelineMsg.Fail msg) {
-            analyses.put(msg.getName(), msg.getResult());
-            if (analyses.size() == pipelines.size()) {
-                System.out.println(this + ": all pipelines have completed. terminating...");
-                getContext().stop(getContext().getSelf());
-            }
+            // TODO
             return this;
+        }
+
+        private void pipelineFactoryStart() {
+            System.out.println(this + ": started.");
+            ActorRef<Message> build = getContext().spawn(Pipeline.Build.Executor.create(organisation, repository, commit, getContext().getSelf()), pipelines.stream().findFirst().get());
+            build.tell(new Message.PipelineMsg.Start());
+        }
+
+        private void pipelineSucceeded() {
+            System.out.println(this + ": all pipelines have completed. terminating...");
+            getContext().stop(getContext().getSelf());
         }
     }
 }
