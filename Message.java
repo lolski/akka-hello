@@ -3,7 +3,7 @@ import akka.actor.typed.ActorRef;
 import java.util.Set;
 
 public interface Message {
-    class PipelineFactory {
+    class AutomationFactory {
         static class Start implements Message {}
     }
 

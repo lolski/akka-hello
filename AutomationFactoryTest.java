@@ -4,17 +4,20 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
 
-public class PipelineFactoryTest {
+public class AutomationFactoryTest {
     private final String organisation = "graknlabs-test";
     private final String repository = "grakn";
     private final String commit = "1234567";
 
+    @Rule public TestName testName = new TestName();
     private ActorTestKit testKit;
 
     @Before
@@ -28,20 +31,20 @@ public class PipelineFactoryTest {
     }
 
     @Test
-    public void pipelineFactoryMustExecuteSuccessfully() {
-        ActorRef<Message> pipelineFactory = testKit.spawn(
-                PipelineFactory.Executor.create("graknlabs-test", "grakn", "1234567"), "graknlabs-test-grakn-1234567");
-        pipelineFactory.tell(new Message.PipelineFactory.Start());
+    public void automationFactoryMustExecuteSuccessfully() {
+        ActorRef<Message> automationFactory = testKit.spawn(
+                AutomationFactory.Executor.create("graknlabs-test", "grakn", "1234567"), "graknlabs-test-grakn-1234567");
+        automationFactory.tell(new Message.AutomationFactory.Start());
     }
 
     @Test
     public void pipelineMustExecuteSuccessfully() {
-        TestProbe<Message> pipelineFactory = testKit.createTestProbe();
+        TestProbe<Message> automationFactory = testKit.createTestProbe();
         ActorRef<Message> pipeline = testKit.spawn(
-                Pipeline.Build.Executor.create(organisation, repository, commit, pipelineFactory.getRef()), "build");
+                Pipeline.Build.Executor.create(organisation, repository, commit, automationFactory.getRef()), "build");
         pipeline.tell(new Message.PipelineMsg.Start());
-        pipelineFactory.expectMessageClass(Message.PipelineMsg.Success.class);
-        pipelineFactory.expectNoMessage();
+        automationFactory.expectMessageClass(Message.PipelineMsg.Success.class);
+        automationFactory.expectNoMessage();
     }
 
     @Test

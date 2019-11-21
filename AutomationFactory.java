@@ -12,7 +12,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-class PipelineFactory {
+class AutomationFactory {
     static class Executor extends AbstractBehavior<Message> {
         // description
         private final String organisation;
@@ -28,7 +28,7 @@ class PipelineFactory {
         @Override
         public Receive<Message> createReceive() {
             return newReceiveBuilder()
-                    .onMessage(Message.PipelineFactory.Start.class, msg -> onPipelineFactoryStart(msg))
+                    .onMessage(Message.AutomationFactory.Start.class, msg -> onAutomationFactoryStart(msg))
                     .onMessage(Message.PipelineMsg.Success.class, msg -> onPipelineSuccess(msg))
                     .onMessage(Message.PipelineMsg.Fail.class, msg -> onPipelineFail(msg))
                     .onSignal(Terminated.class, signal -> Behaviors.stopped())
@@ -47,7 +47,7 @@ class PipelineFactory {
             this.commit = commit;
         }
 
-        private Behavior<Message> onPipelineFactoryStart(Message.PipelineFactory.Start msg) {
+        private Behavior<Message> onAutomationFactoryStart(Message.AutomationFactory.Start msg) {
             // TODO: execute all pipelines, not just build
             pipelineExecuteAll();
             return this;
@@ -56,7 +56,7 @@ class PipelineFactory {
         private Behavior<Message> onPipelineSuccess(Message.PipelineMsg.Success msg) {
             pipelineAnalyses.put(msg.getName(), msg.getResult());
             if (pipelineAnalyses.size() == pipelines.size()) {
-                pipelineFactorySucceeded();
+                automationFactoryShutdown();
             }
             return this;
         }
@@ -72,7 +72,7 @@ class PipelineFactory {
             build.tell(new Message.PipelineMsg.Start());
         }
 
-        private void pipelineFactorySucceeded() {
+        private void automationFactoryShutdown() {
             System.out.println(this + ": all pipelines have completed. terminating...");
             getContext().stop(getContext().getSelf());
         }

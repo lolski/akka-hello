@@ -17,13 +17,12 @@ class Job {
         private final String pipeline;
         private final String workflow;
         private final String job;
-        private final ActorRef<Message> workflowRef;
         private final String script = "echo hello";
 
+        private final ActorRef<Message> workflowRef;
         private Set<ActorRef<Message>> dependsOn = new HashSet<>();
         private Set<String> dependsOnAnalyses = new HashSet<>();
         private Set<ActorRef<Message>> dependedBy = new HashSet<>();
-
         private String analysis = "{analysis result placeholder}";
 
         static Behavior<Message> create(String organisation, String repository, String commit, String pipeline, String workflow, String job, ActorRef<Message> workflowRef) {
@@ -58,6 +57,7 @@ class Job {
         }
 
         private Behavior<Message> onJobDependencies(Message.Job.Dependencies msg) {
+            System.out.println(this + ": dependencies declared.");
             dependsOn = msg.getDependsOn();
             dependedBy = msg.getDependedBy();
             return this;
@@ -66,15 +66,16 @@ class Job {
         private Behavior<Message> onJobStart(Message.Job.Start msg) {
             System.out.println(this + ": started.");
             if (dependsOnAnalyses.size() == dependsOn.size()) {
-                jobSucceeded();
+                jobShutdown();
             }
             return this;
         }
 
         private Behavior<Message> onJobSuccess(Message.Job.Success msg) {
+            System.out.println(this + ": " + msg.getJob().path().name() + " succeeded.");
             dependsOnAnalyses.add(msg.getResult());
             if (dependsOnAnalyses.size() == dependsOn.size()) {
-                jobSucceeded();
+                jobShutdown();
             }
             return this;
         }
@@ -89,7 +90,7 @@ class Job {
             return this;
         }
 
-        private void jobSucceeded() {
+        private void jobShutdown() {
             System.out.println(this + ": succeeded.");
             for (ActorRef<Message> dep: dependedBy) {
                 dep.tell(new Message.Job.Success(getContext().getSelf(), analysis));

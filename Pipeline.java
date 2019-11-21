@@ -27,12 +27,12 @@ interface Pipeline {
                     new SimpleImmutableEntry<>("correctness", "performance")
             ));
 
-            private ActorRef<Message> pipelineFactory;
+            private ActorRef<Message> automationFactory;
             private Map<String, ActorRef<Message>> workflowActive = new HashMap<>();
             private Map<String, String> workflowAnalyses = new HashMap<>();
 
-            static Behavior<Message> create(String organisation, String repository, String commit, ActorRef<Message> pipelineFactory) {
-                return Behaviors.setup(context -> new Executor(organisation, repository, commit, context, pipelineFactory));
+            static Behavior<Message> create(String organisation, String repository, String commit, ActorRef<Message> automationFactory) {
+                return Behaviors.setup(context -> new Executor(organisation, repository, commit, context, automationFactory));
             }
 
             @Override
@@ -49,19 +49,19 @@ interface Pipeline {
                 return organisation + "/" + repository + "@" + commit + "/" + name;
             }
 
-            private Executor(String organisation, String repository, String commit, ActorContext<Message> context, ActorRef<Message> pipelineFactory) {
+            private Executor(String organisation, String repository, String commit, ActorContext<Message> context, ActorRef<Message> automationFactory) {
                 super(context);
                 this.organisation = organisation;
                 this.repository = repository;
                 this.commit = commit;
-                this.pipelineFactory = pipelineFactory;
+                this.automationFactory = automationFactory;
             }
 
             private Behavior<Message> onPipelineStart(Message.PipelineMsg.Start msg) {
                 System.out.println(this + ": started.");
                 workflowExecuteAll();
                 if (workflowAnalyses.size() == workflows.size()) {
-                    pipelineSucceeded();
+                    pipelineShutdown();
                 }
                 return this;
             }
@@ -70,7 +70,7 @@ interface Pipeline {
                 workflowActive.remove(msg.getName());
                 workflowAnalyses.put(msg.getName(), msg.getAnalysis());
                 if (workflowAnalyses.size() == workflows.size()) {
-                    pipelineSucceeded();
+                    pipelineShutdown();
                 }
                 return this;
             }
@@ -85,9 +85,9 @@ interface Pipeline {
                 workflowActive.values().forEach(e -> e.tell(new Message.WorkflowMsg.Start()));
             }
 
-            private void pipelineSucceeded() {
+            private void pipelineShutdown() {
                 System.out.println(this + ": all workflows have completed. terminating...");
-                pipelineFactory.tell(new Message.PipelineMsg.Success(name, getContext().getSelf(), "1"));
+                automationFactory.tell(new Message.PipelineMsg.Success(name, getContext().getSelf(), "1"));
                 getContext().stop(getContext().getSelf());
             }
 
