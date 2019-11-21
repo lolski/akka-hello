@@ -3,7 +3,7 @@ import akka.actor.typed.ActorRef;
 import java.util.Set;
 
 public interface Message {
-    class AutomationFactory {
+    class AutomationFactoryMsg {
         static class Start implements Message {}
     }
 
@@ -129,7 +129,7 @@ public interface Message {
         }
     }
 
-    class Job {
+    class JobMsg {
         static class Dependencies implements Message {
             private final Set<ActorRef<Message>> dependsOn;
             private final Set<ActorRef<Message>> dependedBy;
@@ -152,37 +152,37 @@ public interface Message {
 
         static class Success implements Message {
             private ActorRef<Message> job;
-            private String result;
+            private String analysis;
 
-            Success(ActorRef<Message> job, String result) {
+            Success(ActorRef<Message> job, String analysis) {
                 this.job = job;
-                this.result = result;
+                this.analysis = analysis;
             }
 
-            ActorRef<Message> getJob() {
+            ActorRef<Message> getExecutor() {
                 return job;
             }
 
-            public String getResult() {
-                return result;
+            public String getAnalysis() {
+                return analysis;
             }
         }
 
         static class Fail implements Message {
             private ActorRef<Message> job;
-            private String result;
+            private String analysis;
 
-            Fail(ActorRef<Message> job, String result) {
+            Fail(ActorRef<Message> job, String analysis) {
                 this.job = job;
-                this.result = result;
+                this.analysis = analysis;
             }
 
             ActorRef<Message> getJob() {
                 return job;
             }
 
-            public String getResult() {
-                return result;
+            public String getAnalysis() {
+                return analysis;
             }
         }
     }

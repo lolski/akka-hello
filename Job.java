@@ -32,10 +32,10 @@ class Job {
         @Override
         public Receive<Message> createReceive() {
             return newReceiveBuilder()
-                    .onMessage(Message.Job.Dependencies.class, msg -> onJobDependencies(msg))
-                    .onMessage(Message.Job.Start.class, msg -> onJobStart(msg))
-                    .onMessage(Message.Job.Success.class, msg -> onJobSuccess(msg))
-                    .onMessage(Message.Job.Fail.class, msg -> onJobFail(msg))
+                    .onMessage(Message.JobMsg.Dependencies.class, msg -> onJobDependencies(msg))
+                    .onMessage(Message.JobMsg.Start.class, msg -> onJobStart(msg))
+                    .onMessage(Message.JobMsg.Success.class, msg -> onJobSuccess(msg))
+                    .onMessage(Message.JobMsg.Fail.class, msg -> onJobFail(msg))
                     .onSignal(PostStop.class, signal -> onPostStop(signal))
                     .build();
         }
@@ -56,14 +56,14 @@ class Job {
             this.workflowRef = workflowRef;
         }
 
-        private Behavior<Message> onJobDependencies(Message.Job.Dependencies msg) {
+        private Behavior<Message> onJobDependencies(Message.JobMsg.Dependencies msg) {
             System.out.println(this + ": dependencies declared.");
             dependsOn = msg.getDependsOn();
             dependedBy = msg.getDependedBy();
             return this;
         }
 
-        private Behavior<Message> onJobStart(Message.Job.Start msg) {
+        private Behavior<Message> onJobStart(Message.JobMsg.Start msg) {
             System.out.println(this + ": started.");
             executeAll();
             if (dependsOnAnalyses.size() == dependsOn.size()) {
@@ -72,16 +72,16 @@ class Job {
             return this;
         }
 
-        private Behavior<Message> onJobSuccess(Message.Job.Success msg) {
-            System.out.println(this + ": " + msg.getJob().path().name() + " succeeded.");
-            dependsOnAnalyses.add(msg.getResult());
+        private Behavior<Message> onJobSuccess(Message.JobMsg.Success msg) {
+            System.out.println(this + ": " + msg.getExecutor().path().name() + " succeeded.");
+            dependsOnAnalyses.add(msg.getAnalysis());
             if (dependsOnAnalyses.size() == dependsOn.size()) {
                 notifyAndShutdown();
             }
             return this;
         }
 
-        private Behavior<Message> onJobFail(Message.Job.Fail msg) {
+        private Behavior<Message> onJobFail(Message.JobMsg.Fail msg) {
             // TODO
             return this;
         }
@@ -98,9 +98,9 @@ class Job {
         private void notifyAndShutdown() {
             System.out.println(this + ": succeeded.");
             for (ActorRef<Message> dep: dependedBy) {
-                dep.tell(new Message.Job.Success(getContext().getSelf(), analysis));
+                dep.tell(new Message.JobMsg.Success(getContext().getSelf(), analysis));
             }
-            workflowRef.tell(new Message.Job.Success(getContext().getSelf(), analysis));
+            workflowRef.tell(new Message.JobMsg.Success(getContext().getSelf(), analysis));
             getContext().stop(getContext().getSelf());
         }
     }

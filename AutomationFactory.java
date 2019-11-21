@@ -28,7 +28,7 @@ class AutomationFactory {
         @Override
         public Receive<Message> createReceive() {
             return newReceiveBuilder()
-                    .onMessage(Message.AutomationFactory.Start.class, msg -> onAutomationFactoryStart(msg))
+                    .onMessage(Message.AutomationFactoryMsg.Start.class, msg -> onAutomationFactoryStart(msg))
                     .onMessage(Message.PipelineMsg.Success.class, msg -> onPipelineSuccess(msg))
                     .onMessage(Message.PipelineMsg.Fail.class, msg -> onPipelineFail(msg))
                     .onSignal(Terminated.class, signal -> Behaviors.stopped())
@@ -47,7 +47,7 @@ class AutomationFactory {
             this.commit = commit;
         }
 
-        private Behavior<Message> onAutomationFactoryStart(Message.AutomationFactory.Start msg) {
+        private Behavior<Message> onAutomationFactoryStart(Message.AutomationFactoryMsg.Start msg) {
             // TODO: execute all pipelines, not just build
             executeAll();
             return this;

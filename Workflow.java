@@ -32,9 +32,11 @@ class Workflow {
         private final ActorRef<Message> pipelineRef;
         private Set<ActorRef<Message>> dependsOn = new HashSet<>();
         private Set<String> dependsOnAnalyses = new HashSet<>();
-        private Map<String, ActorRef<Message>> jobActive = new HashMap<>();
         private Set<ActorRef<Message>> dependedBy = new HashSet<>();
         private String analysis = "{analysis result placeholder}";
+
+        private Map<String, ActorRef<Message>> jobActive = new HashMap<>();
+        private Map<String, String> jobAnalyses = new HashMap<>();
 
         static Behavior<Message> create(String organisation, String repository, String commit, String pipelineName, String workflowName, ActorRef<Message> pipeline) {
             return Behaviors.setup(context -> new Executor(organisation, repository, commit, pipelineName, workflowName, context, pipeline));
@@ -47,7 +49,9 @@ class Workflow {
                     .onMessage(Message.WorkflowMsg.Start.class, msg -> onWorkflowStart(msg))
                     .onMessage(Message.WorkflowMsg.Success.class, msg -> onWorkflowSuccess(msg))
                     .onMessage(Message.WorkflowMsg.Fail.class, msg -> onWorkflowFail(msg))
-                    .onSignal(PostStop.class, this::onPostStop)
+                    .onMessage(Message.JobMsg.Success.class, msg -> onJobSuccess(msg))
+                    .onMessage(Message.JobMsg.Fail.class, msg -> onJobFail(msg))
+                    .onSignal(PostStop.class, signal -> onPostStop(signal))
                     .build();
         }
 
@@ -75,9 +79,8 @@ class Workflow {
 
         private Behavior<Message> onWorkflowStart(Message.WorkflowMsg.Start msg) {
             System.out.println(this + ": started.");
-            executeAll();
             if (dependsOnAnalyses.size() == dependsOn.size()) {
-                notifyAndShutdown();
+                executeAll();
             }
             return this;
         }
@@ -86,7 +89,7 @@ class Workflow {
             System.out.println(this + ": " + msg.getName() + " succeeded.");
             dependsOnAnalyses.add(msg.getAnalysis());
             if (dependsOnAnalyses.size() == dependsOn.size()) {
-                notifyAndShutdown();
+                executeAll();
             }
 
             return this;
@@ -97,15 +100,29 @@ class Workflow {
             return this;
         }
 
+        private Behavior<Message> onJobSuccess(Message.JobMsg.Success msg) {
+            System.out.println(this + ": job '" + msg.getExecutor().path().name() + "' succeeded.");
+            jobAnalyses.put(msg.getExecutor().path().name(), msg.getAnalysis());
+            if (jobAnalyses.size() == jobs.size()) {
+                notifyAndShutdown();
+            }
+            return this;
+        }
+
+        private Behavior<Message> onJobFail(Message.JobMsg.Fail msg) {
+            // TODO
+            return this;
+        }
+
         private Behavior<Message> onPostStop(PostStop signal) {
             System.out.println(this + ": stopped with signal " + signal);
             return this;
         }
 
         private void executeAll() {
-            // TODO
+            System.out.println(this + ": dependencies met. executing jobs...");
             jobActive = createJobs(jobs, dependencies);
-            jobActive.values().forEach(e -> e.tell(new Message.Job.Start()));
+            jobActive.values().forEach(e -> e.tell(new Message.JobMsg.Start()));
         }
 
         private void notifyAndShutdown() {
@@ -138,7 +155,7 @@ class Workflow {
                         .filter(keyVal -> keyVal.getKey().equals(jobName))
                         .map(keyVal -> jobMap.get(keyVal.getValue()))
                         .collect(Collectors.toSet());
-                job.tell(new Message.Job.Dependencies(dependsOn, dependedBy));
+                job.tell(new Message.JobMsg.Dependencies(dependsOn, dependedBy));
             }
 
             return jobMap;
