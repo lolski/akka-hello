@@ -29,7 +29,7 @@ interface Pipeline {
 
             private ActorRef<Message> pipelineFactory;
             private Map<String, ActorRef<Message>> workflowActive = new HashMap<>();
-            private Map<String, String> workflowResults = new HashMap<>();
+            private Map<String, String> workflowAnalyses = new HashMap<>();
 
             static Behavior<Message> create(String organisation, String repository, String commit, ActorRef<Message> pipelineFactory) {
                 return Behaviors.setup(context -> new Executor(organisation, repository, commit, context, pipelineFactory));
@@ -60,7 +60,7 @@ interface Pipeline {
             private Behavior<Message> onPipelineStart(Message.PipelineMsg.Start msg) {
                 System.out.println(this + ": started.");
                 workflowExecuteAll();
-                if (workflowResults.size() == workflows.size()) {
+                if (workflowAnalyses.size() == workflows.size()) {
                     pipelineSucceeded();
                 }
                 return this;
@@ -68,8 +68,8 @@ interface Pipeline {
 
             private Behavior<Message> onWorkflowSuccess(Message.WorkflowMsg.Success msg) {
                 workflowActive.remove(msg.getName());
-                workflowResults.put(msg.getName(), msg.getResult());
-                if (workflowResults.size() == workflows.size()) {
+                workflowAnalyses.put(msg.getName(), msg.getAnalysis());
+                if (workflowAnalyses.size() == workflows.size()) {
                     pipelineSucceeded();
                 }
                 return this;

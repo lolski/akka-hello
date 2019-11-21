@@ -19,7 +19,7 @@ class PipelineFactory {
         private final String repository;
         private final String commit;
         private final Set<String> pipelines = new HashSet<>(Arrays.asList("build"));
-        private Map<String, String> analyses = new HashMap<>();
+        private Map<String, String> pipelineAnalyses = new HashMap<>();
 
         static Behavior<Message> create(String organisation, String repository, String commit) {
             return Behaviors.setup(context -> new Executor(organisation, repository, commit, context));
@@ -54,8 +54,8 @@ class PipelineFactory {
         }
 
         private Behavior<Message> onPipelineSuccess(Message.PipelineMsg.Success msg) {
-            analyses.put(msg.getName(), msg.getResult());
-            if (analyses.size() == pipelines.size()) {
+            pipelineAnalyses.put(msg.getName(), msg.getResult());
+            if (pipelineAnalyses.size() == pipelines.size()) {
                 pipelineFactorySucceeded();
             }
             return this;

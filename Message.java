@@ -99,7 +99,7 @@ public interface Message {
                 return executor;
             }
 
-            String getResult() {
+            String getAnalysis() {
                 return result;
             }
         }
