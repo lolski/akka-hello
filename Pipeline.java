@@ -59,18 +59,17 @@ interface Pipeline {
 
             private Behavior<Message> onPipelineStart(Message.PipelineMsg.Start msg) {
                 System.out.println(this + ": started.");
-                workflowExecuteAll();
+                executeAll();
                 if (workflowAnalyses.size() == workflows.size()) {
-                    pipelineShutdown();
+                    notifyAndShutdown();
                 }
                 return this;
             }
 
             private Behavior<Message> onWorkflowSuccess(Message.WorkflowMsg.Success msg) {
-                workflowActive.remove(msg.getName());
                 workflowAnalyses.put(msg.getName(), msg.getAnalysis());
                 if (workflowAnalyses.size() == workflows.size()) {
-                    pipelineShutdown();
+                    notifyAndShutdown();
                 }
                 return this;
             }
@@ -80,12 +79,12 @@ interface Pipeline {
                 return this;
             }
 
-            private void workflowExecuteAll() {
+            private void executeAll() {
                 workflowActive = createWorkflows(this.workflows, dependencies);
                 workflowActive.values().forEach(e -> e.tell(new Message.WorkflowMsg.Start()));
             }
 
-            private void pipelineShutdown() {
+            private void notifyAndShutdown() {
                 System.out.println(this + ": all workflows have completed. terminating...");
                 automationFactory.tell(new Message.PipelineMsg.Success(name, getContext().getSelf(), "1"));
                 getContext().stop(getContext().getSelf());

@@ -65,8 +65,9 @@ class Job {
 
         private Behavior<Message> onJobStart(Message.Job.Start msg) {
             System.out.println(this + ": started.");
+            executeAll();
             if (dependsOnAnalyses.size() == dependsOn.size()) {
-                jobShutdown();
+                notifyAndShutdown();
             }
             return this;
         }
@@ -75,7 +76,7 @@ class Job {
             System.out.println(this + ": " + msg.getJob().path().name() + " succeeded.");
             dependsOnAnalyses.add(msg.getResult());
             if (dependsOnAnalyses.size() == dependsOn.size()) {
-                jobShutdown();
+                notifyAndShutdown();
             }
             return this;
         }
@@ -90,7 +91,11 @@ class Job {
             return this;
         }
 
-        private void jobShutdown() {
+        private void executeAll() {
+
+        }
+
+        private void notifyAndShutdown() {
             System.out.println(this + ": succeeded.");
             for (ActorRef<Message> dep: dependedBy) {
                 dep.tell(new Message.Job.Success(getContext().getSelf(), analysis));

@@ -63,8 +63,9 @@ class Workflow {
 
         private Behavior<Message> onWorkflowStart(Message.WorkflowMsg.Start msg) {
             System.out.println(this + ": started.");
+            executeAll();
             if (dependsOnAnalyses.size() == dependsOn.size()) {
-                workflowShutdown();
+                notifyAndShutdown();
             }
             return this;
         }
@@ -73,7 +74,7 @@ class Workflow {
             System.out.println(this + ": " + msg.getName() + " succeeded.");
             dependsOnAnalyses.add(msg.getAnalysis());
             if (dependsOnAnalyses.size() == dependsOn.size()) {
-                workflowShutdown();
+                notifyAndShutdown();
             }
 
             return this;
@@ -89,7 +90,11 @@ class Workflow {
             return this;
         }
 
-        private void workflowShutdown() {
+        private void executeAll() {
+            // TODO
+        }
+
+        private void notifyAndShutdown() {
             System.out.println(this + ": succeeded");
             for (ActorRef<Message> dep : dependedBy) {
                 // TODO: execute(script, Arrays.asList());
