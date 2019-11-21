@@ -9,7 +9,7 @@ import akka.actor.typed.javadsl.Receive;
 import java.util.HashSet;
 import java.util.Set;
 
-public class Workflow {
+class Workflow {
     static class Executor extends AbstractBehavior<Message> {
         // description
         private final String organisation;

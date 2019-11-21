@@ -12,7 +12,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public class PipelineFactory {
+class PipelineFactory {
     static class Executor extends AbstractBehavior<Message> {
         // description
         private final String organisation;

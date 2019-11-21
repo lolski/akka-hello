@@ -5,7 +5,6 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 
-import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.AbstractMap.SimpleImmutableEntry;
+import static java.util.HashMap.SimpleImmutableEntry;
 
 interface Pipeline {
     class Build implements Pipeline {
@@ -25,7 +24,7 @@ interface Pipeline {
             private final String name = "build";
             private final Set<String> workflows = new HashSet<>(Arrays.asList("correctness", "performance"));
             private final Set<Map.Entry<String, String>> dependencies = new HashSet<>(Arrays.asList(
-                    new AbstractMap.SimpleImmutableEntry<>("correctness", "performance")
+                    new SimpleImmutableEntry<>("correctness", "performance")
             ));
 
             private ActorRef<Message> pipelineFactory;
