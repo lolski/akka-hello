@@ -1,6 +1,6 @@
 java_library(
     name = "pipeline-factory",
-    srcs = ["PipelineFactory.java", "Pipeline.java", "Workflow.java", "Message.java"],
+    srcs = ["PipelineFactory.java", "Pipeline.java", "Workflow.java", "Job.java", "Message.java"],
     deps = [
         "//dependencies/maven/artifacts/com/typesafe/akka:akka-actor-2-13",
         "//dependencies/maven/artifacts/com/typesafe/akka:akka-actor-typed-2-13",

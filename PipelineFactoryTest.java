@@ -1,6 +1,7 @@
 import akka.actor.testkit.typed.javadsl.ActorTestKit;
 import akka.actor.testkit.typed.javadsl.TestProbe;
 import akka.actor.typed.ActorRef;
+import akka.actor.typed.Behavior;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,7 +27,6 @@ public class PipelineFactoryTest {
         testKit.shutdownTestKit();
     }
 
-    // it must finished returning a result which can be success or fail
     @Test
     public void pipelineFactoryMustExecuteSuccessfully() {
         ActorRef<Message> pipelineFactory = testKit.spawn(
@@ -102,5 +102,64 @@ public class PipelineFactoryTest {
         pipeline.expectMessageClass(Message.WorkflowMsg.Success.class);
         pipeline.expectMessageClass(Message.WorkflowMsg.Success.class);
         pipeline.expectNoMessage();
+    }
+
+    @Test
+    public void jobMustBeExecutedSuccessfully_noDependencies() {
+        TestProbe<Message> workflow = testKit.createTestProbe();
+        Behavior<Message> jobBehavior =
+                Job.Executor.create(organisation, repository, commit, "build", "test-workflow", "job", workflow.getRef());
+        ActorRef<Message> job = testKit.spawn(jobBehavior);
+        job.tell(new Message.Job.Start());
+        workflow.expectMessageClass(Message.Job.Success.class);
+        workflow.expectNoMessage();
+    }
+
+    @Test
+    public void jobMustNotBeExecuted_ifDependenciesUnmet() {
+        TestProbe<Message> workflow = testKit.createTestProbe();
+        Behavior<Message> jobBehavior =
+                Job.Executor.create(organisation, repository, commit, "build", "workflow", "test-job", workflow.getRef());
+        TestProbe<Message> job1 = testKit.createTestProbe();
+        ActorRef<Message> job2 = testKit.spawn(jobBehavior);
+        job2.tell(new Message.Job.Dependencies(new HashSet<>(Arrays.asList(job1.getRef())), new HashSet<>()));
+        job2.tell(new Message.Job.Start());
+        workflow.expectNoMessage();
+    }
+
+    @Test
+    public void jobMustBeExecutedSuccessfully_dependencyScenario1() {
+        TestProbe<Message> workflow = testKit.createTestProbe();
+        ActorRef<Message> job1 = testKit.spawn(Job.Executor.create(
+                organisation, repository, commit,"build","workflow", "test-job-1", workflow.getRef()),"test-job-1");
+        ActorRef<Message> job2 = testKit.spawn(Job.Executor.create(
+                organisation, repository,commit, "build", "workflow", "test-job-2", workflow.getRef()),"test-job-2");
+        job1.tell(new Message.Job.Dependencies(new HashSet<>(), new HashSet<>(Arrays.asList(job2))));
+        job2.tell(new Message.Job.Dependencies(new HashSet<>(Arrays.asList(job1)), new HashSet<>()));
+        job1.tell(new Message.Job.Start());
+        job2.tell(new Message.Job.Start());
+        workflow.expectMessageClass(Message.Job.Success.class);
+        workflow.expectMessageClass(Message.Job.Success.class);
+        workflow.expectNoMessage();
+    }
+
+    @Test
+    public void jobMustBeExecutedSuccessfully_dependencyScenario2() {
+        TestProbe<Message> workflow = testKit.createTestProbe();
+        ActorRef<Message> job1 = testKit.spawn(Job.Executor.create(
+                organisation, repository, commit,"build","workflow", "test-job-1", workflow.getRef()),"test-job-1");
+        ActorRef<Message> job2 = testKit.spawn(Job.Executor.create(
+                organisation, repository,commit, "build", "workflow", "test-job-2", workflow.getRef()),"test-job-2");
+        ActorRef<Message> job3 = testKit.spawn(Job.Executor.create(
+                organisation, repository,commit, "build", "workflow", "test-job-3", workflow.getRef()),"test-job-3");
+        job1.tell(new Message.Job.Dependencies(new HashSet<>(), new HashSet<>(Arrays.asList(job2))));
+        job2.tell(new Message.Job.Dependencies(new HashSet<>(Arrays.asList(job1)), new HashSet<>()));
+        job1.tell(new Message.Job.Start());
+        job2.tell(new Message.Job.Start());
+        job3.tell(new Message.Job.Start());
+        workflow.expectMessageClass(Message.Job.Success.class);
+        workflow.expectMessageClass(Message.Job.Success.class);
+        workflow.expectMessageClass(Message.Job.Success.class);
+        workflow.expectNoMessage();
     }
 }
