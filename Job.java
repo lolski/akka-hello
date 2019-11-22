@@ -12,7 +12,7 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-public class Job {
+class Job {
     public static class Description {
         private String job;
         private String script;
@@ -52,15 +52,15 @@ public class Job {
         }
     }
 
-    public static class Executor extends AbstractBehavior<Message> {
+    public static class Executor extends AbstractBehavior<Job.Executor.Message> {
         private Description description;
-        private final ActorRef<Message> workflowRef;
+        private final ActorRef<Workflow.Executor.Message> workflowRef;
 
-        static Behavior<Message> create(Description desc, ActorRef<Message> workflowRef) {
+        static Behavior<Message> create(Description desc, ActorRef<Workflow.Executor.Message> workflowRef) {
             return Behaviors.setup(context -> new Job.Executor(desc, workflowRef, context));
         }
 
-        private Executor(Description description, ActorRef<Message> workflowRef, ActorContext<Message> context) {
+        private Executor(Description description, ActorRef<Workflow.Executor.Message> workflowRef, ActorContext<Job.Executor.Message> context) {
             super(context);
             this.description = description;
             this.workflowRef = workflowRef;
@@ -69,11 +69,11 @@ public class Job {
         @Override
         public Receive<Message> createReceive() {
             return newReceiveBuilder()
-                    .onMessage(Message.JobMsg.Start.class, msg -> onJobStart(msg))
+                    .onMessage(Message.Start.class, msg -> onJobStart(msg))
                     .build();
         }
 
-        private Behavior<Message> onJobStart(Message.JobMsg.Start msg) {
+        private Behavior<Message> onJobStart(Message.Start msg) {
             try {
                 ProcessResult out = new ProcessExecutor()
                         .command(description.getScript().split(" "))
@@ -81,20 +81,24 @@ public class Job {
                         .timeout(description.getTimeoutSec(), TimeUnit.SECONDS)
                         .execute();
                 if (out.getExitValue() == 0) {
-                    workflowRef.tell(new Message.JobMsg.Success(description, getContext().getSelf(), out.getOutput().getUTF8()));
+                    workflowRef.tell(new Workflow.Executor.Message.Job_.Success(description, getContext().getSelf(), out.getOutput().getUTF8()));
                 }
                 else {
-                    workflowRef.tell(new Message.JobMsg.Fail(description, getContext().getSelf(), out.getOutput().getUTF8()));
+                    workflowRef.tell(new Workflow.Executor.Message.Job_.Fail(description, getContext().getSelf(), out.getOutput().getUTF8()));
                 }
             } catch (IOException | TimeoutException e) {
                 e.printStackTrace();
-                workflowRef.tell(new Message.JobMsg.Fail(description, getContext().getSelf(), e.getMessage()));
+                workflowRef.tell(new Workflow.Executor.Message.Job_.Fail(description, getContext().getSelf(), e.getMessage()));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 e.printStackTrace();
-                workflowRef.tell(new Message.JobMsg.Fail(description, getContext().getSelf(), e.getMessage()));
+                workflowRef.tell(new Workflow.Executor.Message.Job_.Fail(description, getContext().getSelf(), e.getMessage()));
             }
             return this;
+        }
+
+        interface Message {
+            class Start implements Message {}
         }
     }
 }

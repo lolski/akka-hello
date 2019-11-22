@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-public class Workflow {
+class Workflow {
     public static class Description {
         private String name;
         private Map<Job.Description, Set<Job.Description>> jobs;
@@ -43,9 +43,9 @@ public class Workflow {
         }
     }
 
-    public static class Executor extends AbstractBehavior<Message> {
+    public static class Executor extends AbstractBehavior<Workflow.Executor.Message> {
         private Description description;
-        private final ActorRef<Message> pipelineRef;
+        private final ActorRef<Pipeline.Executor.Message> pipelineRef;
 
         private Set<Job.Description> remaining;
         private Set<Job.Description> executing;
@@ -53,20 +53,20 @@ public class Workflow {
         private Set<Job.Description> failed;
         private String analysis = "{analysis result placeholder}";
 
-        public static Behavior<Message> create(Description description, ActorRef<Message> pipelineRef) {
+        static Behavior<Message> create(Description description, ActorRef<Pipeline.Executor.Message> pipelineRef) {
             return Behaviors.setup(context -> new Executor(description, pipelineRef, context));
         }
 
         @Override
         public Receive<Message> createReceive() {
             return newReceiveBuilder()
-                    .onMessage(Message.WorkflowMsg.Start.class, msg -> onWorkflowStart(msg))
-                    .onMessage(Message.JobMsg.Success.class, msg -> onJobSuccess(msg))
-                    .onMessage(Message.JobMsg.Fail.class, msg -> onJobFail(msg))
+                    .onMessage(Message.Start.class, msg -> onWorkflowStart(msg))
+                    .onMessage(Message.Job_.Success.class, msg -> onJobSuccess(msg))
+                    .onMessage(Message.Job_.Fail.class, msg -> onJobFail(msg))
                     .build();
         }
 
-        private Executor(Description description, ActorRef<Message> pipelineRef, ActorContext<Message> context) {
+        private Executor(Description description, ActorRef<Pipeline.Executor.Message> pipelineRef, ActorContext<Message> context) {
             super(context);
             this.description = description;
             this.pipelineRef = pipelineRef;
@@ -77,11 +77,11 @@ public class Workflow {
             this.failed = new HashSet<>();
         }
 
-        private Behavior<Message> onWorkflowStart(Message.WorkflowMsg.Start msg) {
+        private Behavior<Message> onWorkflowStart(Message.Start msg) {
             Set<Job.Description> execute = getJobsWithSuccessfulDeps();
             for (Job.Description job: execute) {
-                ActorRef<Message> executor = getContext().spawn(Job.Executor.create(job, getContext().getSelf()), job.getJob());
-                executor.tell(new Message.JobMsg.Start());
+                ActorRef<Job.Executor.Message> executor = getContext().spawn(Job.Executor.create(job, getContext().getSelf()), job.getJob());
+                executor.tell(new Job.Executor.Message.Start());
                 remaining.remove(job);
                 executing.add(job);
             }
@@ -91,13 +91,13 @@ public class Workflow {
             return this;
         }
 
-        private Behavior<Message> onJobSuccess(Message.JobMsg.Success msg) {
+        private Behavior<Message> onJobSuccess(Message.Job_.Success msg) {
             executing.remove(msg.getDescription());
             succeeded.add(msg.getDescription());
             Set<Job.Description> execute = getJobsWithSuccessfulDeps();
             for (Job.Description job: execute) {
-                ActorRef<Message> executor = getContext().spawn(Job.Executor.create(job, getContext().getSelf()), job.getJob());
-                executor.tell(new Message.JobMsg.Start());
+                ActorRef<Job.Executor.Message> executor = getContext().spawn(Job.Executor.create(job, getContext().getSelf()), job.getJob());
+                executor.tell(new Job.Executor.Message.Start());
                 remaining.remove(job);
                 executing.add(job);
             }
@@ -107,12 +107,12 @@ public class Workflow {
             return this;
         }
 
-        private Behavior<Message> onJobFail(Message.JobMsg.Fail msg) {
+        private Behavior<Message> onJobFail(Message.Job_.Fail msg) {
             executing.remove(msg.getDescription());
             failed.add(msg.getDescription());
             Set<Job.Description> bar = getJobsWithFailedDeps();
             for (Job.Description job: bar) {
-                getContext().getSelf().tell(new Message.JobMsg.Fail(job, null, ""));
+                getContext().getSelf().tell(new Message.Job_.Fail(job, null, ""));
                 remaining.remove(job);
                 failed.add(job);
             }
@@ -147,12 +147,96 @@ public class Workflow {
 
         private void notifyAndStop() {
             if (failed.isEmpty()) {
-                pipelineRef.tell(new Message.WorkflowMsg.Success(description, getContext().getSelf(), analysis));
+                pipelineRef.tell(new Pipeline.Executor.Message.Workflow_.Success(description, getContext().getSelf(), analysis));
             }
             else {
-                pipelineRef.tell(new Message.WorkflowMsg.Fail(description, getContext().getSelf(), analysis));
+                pipelineRef.tell(new Pipeline.Executor.Message.Workflow_.Fail(description, getContext().getSelf(), analysis));
             }
             getContext().stop(getContext().getSelf());
+        }
+
+        interface Message {
+            class Start implements Message {}
+
+            class Job_ {
+                static class Success implements Message {
+                    private Job.Description description;
+                    private ActorRef<Job.Executor.Message> executor;
+                    private String analysis;
+
+                    Success(Job.Description description, ActorRef<Job.Executor.Message> executor, String analysis) {
+                        this.description = description;
+                        this.executor = executor;
+                        this.analysis = analysis;
+                    }
+
+                    public Job.Description getDescription() {
+                        return description;
+                    }
+
+                    ActorRef<Job.Executor.Message> getExecutor() {
+                        return executor;
+                    }
+
+                    String getAnalysis() {
+                        return analysis;
+                    }
+
+                    @Override
+                    public boolean equals(Object o) {
+                        if (this == o) return true;
+                        if (o == null || getClass() != o.getClass()) return false;
+                        Success success = (Success) o;
+                        return Objects.equals(description, success.description) &&
+                                Objects.equals(executor, success.executor) &&
+                                Objects.equals(analysis, success.analysis);
+                    }
+
+                    @Override
+                    public int hashCode() {
+                        return Objects.hash(description, executor, analysis);
+                    }
+                }
+
+                static class Fail implements Message {
+                    private Job.Description description;
+                    private ActorRef<Job.Executor.Message> executor;
+                    private String analysis;
+
+                    Fail(Job.Description description, ActorRef<Job.Executor.Message> executor, String analysis) {
+                        this.description = description;
+                        this.executor = executor;
+                        this.analysis = analysis;
+                    }
+
+                    Job.Description getDescription() {
+                        return description;
+                    }
+
+                    ActorRef<Job.Executor.Message> getExecutor() {
+                        return executor;
+                    }
+
+                    String getAnalysis() {
+                        return analysis;
+                    }
+
+                    @Override
+                    public boolean equals(Object o) {
+                        if (this == o) return true;
+                        if (o == null || getClass() != o.getClass()) return false;
+                        Fail fail = (Fail) o;
+                        return Objects.equals(description, fail.description) &&
+                                Objects.equals(executor, fail.executor) &&
+                                Objects.equals(analysis, fail.analysis);
+                    }
+
+                    @Override
+                    public int hashCode() {
+                        return Objects.hash(description, executor, analysis);
+                    }
+                }
+            }
         }
     }
 }
