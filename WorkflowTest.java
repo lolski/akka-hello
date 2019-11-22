@@ -87,35 +87,37 @@ public class WorkflowTest {
     }
 
 
-//    @Test
-//    public void workflowMustReturnFail_oneOutOfThreeJobsFailed_scenario1() {
-//        TestProbe<Message> pipeline = testKit.createTestProbe();
-//        Job.Description kgmsNode1 = jobFail("run-kgms-node-1");
-//        Job.Description kgmsNode2 = jobSuccess("run-kgms-node-2");
-//        Job.Description performance = jobSuccess("test-performance");
-//        Map<Job.Description, Set<Job.Description>> jobs = new HashMap<>();
-//        jobs.put(performance, new HashSet<>(Arrays.asList(kgmsNode2)));
-//        jobs.put(kgmsNode2, new HashSet<>(Arrays.asList(kgmsNode1)));
-//        Workflow.Description worflowDesc = new Workflow.Description( " workflow", jobs);
-//        ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()));
-//        workflow.tell(new Message.WorkflowMsg.Start());
-//        pipeline.expectMessage(new Message.WorkflowMsg.Fail(worflowDesc, workflow, "{analysis result placeholder}"));
-//    }
-//
-//    @Test
-//    public void workflowMustReturnFail_oneOutOfThreeJobsFailed_scenario2() {
-//        TestProbe<Message> pipeline = testKit.createTestProbe();
-//        Job.Description kgmsNode1 = jobFail("run-kgms-node-1");
-//        Job.Description kgmsNode2 = jobSuccess("run-kgms-node-2");
-//        Job.Description performance = jobSuccess("test-performance");
-//        Map<Job.Description, Set<Job.Description>> jobs = new HashMap<>();
-//        jobs.put(performance, new HashSet<>(Arrays.asList(kgmsNode2)));
-//        jobs.put(kgmsNode2, new HashSet<>(Arrays.asList(kgmsNode1)));
-//        Workflow.Description worflowDesc = new Workflow.Description( " workflow", jobs);
-//        ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()));
-//        workflow.tell(new Message.WorkflowMsg.Start());
-//        pipeline.expectMessage(new Message.WorkflowMsg.Fail(worflowDesc, workflow, "{analysis result placeholder}"));
-//    }
+    @Test
+    public void workflowMustReturnFail_oneOutOfThreeJobsFailed_scenario1() {
+        TestProbe<Message> pipeline = testKit.createTestProbe();
+        Job.Description kgmsNode1 = jobFail("run-kgms-node-1");
+        Job.Description kgmsNode2 = jobSuccess("run-kgms-node-2");
+        Job.Description performance = jobSuccess("test-performance");
+        Map<Job.Description, Set<Job.Description>> jobs = new HashMap<>();
+        jobs.put(performance, new HashSet<>(Arrays.asList(kgmsNode1, kgmsNode2)));
+        jobs.put(kgmsNode1, new HashSet<>());
+        jobs.put(kgmsNode2, new HashSet<>());
+        Workflow.Description worflowDesc = new Workflow.Description( " workflow", jobs);
+        ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()));
+        workflow.tell(new Message.WorkflowMsg.Start());
+        pipeline.expectMessage(new Message.WorkflowMsg.Fail(worflowDesc, workflow, "{analysis result placeholder}"));
+    }
+
+    @Test
+    public void workflowMustReturnFail_oneOutOfThreeJobsFailed_scenario2() {
+        TestProbe<Message> pipeline = testKit.createTestProbe();
+        Job.Description kgmsNode1 = jobFail("run-kgms-node-1");
+        Job.Description kgmsNode2 = jobSuccess("run-kgms-node-2");
+        Job.Description performance = jobSuccess("test-performance");
+        Map<Job.Description, Set<Job.Description>> jobs = new HashMap<>();
+        jobs.put(performance, new HashSet<>(Arrays.asList(kgmsNode2)));
+        jobs.put(kgmsNode2, new HashSet<>(Arrays.asList(kgmsNode1)));
+        jobs.put(kgmsNode1, new HashSet<>());
+        Workflow.Description worflowDesc = new Workflow.Description( " workflow", jobs);
+        ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()));
+        workflow.tell(new Message.WorkflowMsg.Start());
+        pipeline.expectMessage(new Message.WorkflowMsg.Fail(worflowDesc, workflow, "{analysis result placeholder}"));
+    }
 
     private Job.Description jobSuccess(String name) {
         return new Job.Description(name, "echo hello", 2);

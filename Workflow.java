@@ -112,6 +112,7 @@ public class Workflow {
             failed.add(msg.getDescription());
             Set<Job.Description> bar = getJobsWithFailedDeps();
             for (Job.Description job: bar) {
+                getContext().getSelf().tell(new Message.JobMsg.Fail(job, null, ""));
                 remaining.remove(job);
                 failed.add(job);
             }
@@ -123,27 +124,24 @@ public class Workflow {
 
         private Set<Job.Description> getJobsWithSuccessfulDeps() {
             Set<Job.Description> jobs = new HashSet<>();
-            for (Job.Description key: remaining) {
-                boolean hasNoDeps = description.getJobs().get(key).isEmpty();
-                boolean depsSucceeded = succeeded.containsAll(description.getJobs().get(key));
-                if (hasNoDeps || depsSucceeded) {
-                    jobs.add(key);
+            for (Job.Description job: remaining) {
+                Set<Job.Description> deps = description.getJobs().get(job);
+                if (deps.isEmpty() || succeeded.containsAll(deps)) {
+                    jobs.add(job);
                 }
             }
-
             return jobs;
         }
 
         private Set<Job.Description> getJobsWithFailedDeps() {
             Set<Job.Description> jobs = new HashSet<>();
-            for (Job.Description key: remaining) {
-                boolean hasNoDeps = description.getJobs().get(key).isEmpty();
-                boolean depsFailed = failed.containsAll(description.getJobs().get(key));
-                if (hasNoDeps || depsFailed) {
-                    jobs.add(key);
+            for (Job.Description job: remaining) {
+                Set<Job.Description> deps = description.getJobs().get(job);
+                boolean depsFailed = failed.stream().anyMatch(f -> deps.contains(f));
+                if (depsFailed) {
+                    jobs.add(job);
                 }
             }
-
             return jobs;
         }
 
