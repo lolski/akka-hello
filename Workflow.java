@@ -78,7 +78,7 @@ public class Workflow {
         }
 
         private Behavior<Message> onWorkflowStart(Message.WorkflowMsg.Start msg) {
-            Set<Job.Description> execute = getJobsWithSatisfiedDeps();
+            Set<Job.Description> execute = getJobsWithSuccessfulDeps();
             for (Job.Description job: execute) {
                 ActorRef<Message> executor = getContext().spawn(Job.Executor.create(job, getContext().getSelf()), job.getJob());
                 executor.tell(new Message.JobMsg.Start());
@@ -94,7 +94,7 @@ public class Workflow {
         private Behavior<Message> onJobSuccess(Message.JobMsg.Success msg) {
             executing.remove(msg.getDescription());
             succeeded.add(msg.getDescription());
-            Set<Job.Description> execute = getJobsWithSatisfiedDeps();
+            Set<Job.Description> execute = getJobsWithSuccessfulDeps();
             for (Job.Description job: execute) {
                 ActorRef<Message> executor = getContext().spawn(Job.Executor.create(job, getContext().getSelf()), job.getJob());
                 executor.tell(new Message.JobMsg.Start());
@@ -110,12 +110,10 @@ public class Workflow {
         private Behavior<Message> onJobFail(Message.JobMsg.Fail msg) {
             executing.remove(msg.getDescription());
             failed.add(msg.getDescription());
-            Set<Job.Description> execute = getJobsWithSatisfiedDeps();
-            for (Job.Description job: execute) {
-                ActorRef<Message> executor = getContext().spawn(Job.Executor.create(job, getContext().getSelf()), job.getJob());
-                executor.tell(new Message.JobMsg.Start());
+            Set<Job.Description> bar = getJobsWithFailedDeps();
+            for (Job.Description job: bar) {
                 remaining.remove(job);
-                executing.add(job);
+                failed.add(job);
             }
             if (remaining.isEmpty() && executing.isEmpty()) {
                 notifyAndStop();
@@ -123,33 +121,32 @@ public class Workflow {
             return this;
         }
 
-        private Set<Job.Description> getJobsWithSatisfiedDeps() {
-            Set<Job.Description> satisfied = new HashSet<>();
+        private Set<Job.Description> getJobsWithSuccessfulDeps() {
+            Set<Job.Description> jobs = new HashSet<>();
             for (Job.Description key: remaining) {
-                if (description.getJobs().get(key).isEmpty()) {
-                    satisfied.add(key);
-                }
-                else if (succeeded.containsAll(description.getJobs().get(key))) {
-                    satisfied.add(key);
+                boolean hasNoDeps = description.getJobs().get(key).isEmpty();
+                boolean depsSucceeded = succeeded.containsAll(description.getJobs().get(key));
+                if (hasNoDeps || depsSucceeded) {
+                    jobs.add(key);
                 }
             }
 
-            return satisfied;
+            return jobs;
         }
 
-        private Set<Job.Description> getJobsWithUnsatisfiedDeps() {
-            Set<Job.Description> unsatisfied = new HashSet<>();
+        private Set<Job.Description> getJobsWithFailedDeps() {
+            Set<Job.Description> jobs = new HashSet<>();
             for (Job.Description key: remaining) {
-                if (description.getJobs().get(key).isEmpty()) {
-                    unsatisfied.add(key);
-                }
-                else if (succeeded.containsAll(description.getJobs().get(key))) {
-                    unsatisfied.add(key);
+                boolean hasNoDeps = description.getJobs().get(key).isEmpty();
+                boolean depsFailed = failed.containsAll(description.getJobs().get(key));
+                if (hasNoDeps || depsFailed) {
+                    jobs.add(key);
                 }
             }
 
-            return unsatisfied;
+            return jobs;
         }
+
         private void notifyAndStop() {
             if (failed.isEmpty()) {
                 pipelineRef.tell(new Message.WorkflowMsg.Success(description, getContext().getSelf(), analysis));
