@@ -14,8 +14,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.AbstractMap.SimpleImmutableEntry;
 
-interface Pipeline {
-    class Build implements Pipeline {
+interface Pipeline2 {
+    class Build implements Pipeline2 {
         static class Executor extends AbstractBehavior<Message> {
             // description
             private final String organisation;
@@ -93,7 +93,7 @@ interface Pipeline {
             private Map<String, ActorRef<Message>> createWorkflows(Set<String> workflows, Set<Map.Entry<String, String>> dependencies) {
                 Map<String, ActorRef<Message>> workflowMap = new HashMap<>();
                 for (String workflow: workflows) {
-                    workflowMap.put(workflow, getContext().spawn(Workflow.Executor.create(organisation, repository, commit, this.name, workflow, getContext().getSelf()), workflow));
+                    workflowMap.put(workflow, getContext().spawn(Workflow2.Executor.create(organisation, repository, commit, this.name, workflow, getContext().getSelf()), workflow));
                 }
 
                 List<Map.Entry<String, String>> dependenciesInverted = dependencies.stream()

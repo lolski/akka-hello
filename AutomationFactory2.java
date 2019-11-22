@@ -12,7 +12,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-class AutomationFactory {
+class AutomationFactory2 {
     static class Executor extends AbstractBehavior<Message> {
         // description
         private final String organisation;
@@ -68,7 +68,7 @@ class AutomationFactory {
 
         private void executeAll() {
             System.out.println(this + ": started.");
-            ActorRef<Message> build = getContext().spawn(Pipeline.Build.Executor.create(organisation, repository, commit, getContext().getSelf()), pipelines.stream().findFirst().get());
+            ActorRef<Message> build = getContext().spawn(Pipeline2.Build.Executor.create(organisation, repository, commit, getContext().getSelf()), pipelines.stream().findFirst().get());
             build.tell(new Message.PipelineMsg.Start());
         }
 

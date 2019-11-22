@@ -5,7 +5,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class AutomationFactoryTest {
+public class AutomationFactory2Test {
     private final String organisation = "graknlabs-test";
     private final String repository = "grakn";
     private final String commit = "1234567";
@@ -25,7 +25,7 @@ public class AutomationFactoryTest {
     @Test
     public void automationFactoryMustExecuteSuccessfully() {
         ActorRef<Message> automationFactory = testKit.spawn(
-                AutomationFactory.Executor.create("graknlabs-test", "grakn", "1234567"), "graknlabs-test-grakn-1234567");
+                AutomationFactory2.Executor.create("graknlabs-test", "grakn", "1234567"), "graknlabs-test-grakn-1234567");
         automationFactory.tell(new Message.AutomationFactoryMsg.Start());
     }
 
@@ -33,7 +33,7 @@ public class AutomationFactoryTest {
     public void pipelineMustExecuteSuccessfully() {
         TestProbe<Message> automationFactory = testKit.createTestProbe();
         ActorRef<Message> pipeline = testKit.spawn(
-                Pipeline.Build.Executor.create(organisation, repository, commit, automationFactory.getRef()), "build");
+                Pipeline2.Build.Executor.create(organisation, repository, commit, automationFactory.getRef()), "build");
         pipeline.tell(new Message.PipelineMsg.Start());
         automationFactory.expectMessageClass(Message.PipelineMsg.Success.class);
         automationFactory.expectNoMessage();

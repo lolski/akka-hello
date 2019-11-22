@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-class Workflow {
+class Workflow2 {
     static class Executor extends AbstractBehavior<Message> {
         // description
         private final String organisation;
@@ -138,7 +138,7 @@ class Workflow {
         private Map<String, ActorRef<Message>> createJobs(Set<String> jobs, Set<Map.Entry<String, String>> dependencies) {
             Map<String, ActorRef<Message>> jobMap = new HashMap<>();
             for (String job: jobs) {
-                jobMap.put(job, getContext().spawn(Job.Executor.create(organisation, repository, commit, pipeline, workflow, job, getContext().getSelf()), job));
+                jobMap.put(job, getContext().spawn(Job2.Executor.create(organisation, repository, commit, pipeline, workflow, job, getContext().getSelf()), job));
             }
 
             List<Map.Entry<String, String>> dependenciesInverted = dependencies.stream()

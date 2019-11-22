@@ -9,7 +9,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
 
-public class WorkflowTest {
+public class Workflow2Test {
     private final String organisation = "graknlabs-test";
     private final String repository = "grakn";
     private final String commit = "1234567";
@@ -29,7 +29,7 @@ public class WorkflowTest {
     @Test
     public void workflowMustBeExecutedSuccessfully_noDependencyScenario() {
         TestProbe<Message> pipeline = testKit.createTestProbe();
-        ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(
+        ActorRef<Message> workflow = testKit.spawn(Workflow2.Executor.create(
                 organisation,repository,commit,"build","performance", pipeline.getRef()),"performance"
         );
         workflow.tell(new Message.WorkflowMsg.Start());
@@ -41,7 +41,7 @@ public class WorkflowTest {
     public void workflowMustNotBeExecuted_ifDependenciesUnmet() {
         TestProbe<Message> pipeline = testKit.createTestProbe();
         TestProbe<Message> workflow1 = testKit.createTestProbe();
-        ActorRef<Message> workflow2 = testKit.spawn(Workflow.Executor.create(
+        ActorRef<Message> workflow2 = testKit.spawn(Workflow2.Executor.create(
                 organisation,repository,commit,"build","performance", pipeline.getRef()),"performance"
         );
         workflow2.tell(new Message.WorkflowMsg.Dependencies(new HashSet<>(Arrays.asList(workflow1.getRef())), new HashSet<>()));
@@ -52,9 +52,9 @@ public class WorkflowTest {
     @Test
     public void workflowMustBeExecutedSuccessfully_dependencyScenario1() {
         TestProbe<Message> pipeline = testKit.createTestProbe();
-        ActorRef<Message> workflow1 = testKit.spawn(Workflow.Executor.create(
+        ActorRef<Message> workflow1 = testKit.spawn(Workflow2.Executor.create(
                 organisation, repository, commit,"build","performance-1", pipeline.getRef()),"performance-1");
-        ActorRef<Message> workflow2 = testKit.spawn(Workflow.Executor.create(
+        ActorRef<Message> workflow2 = testKit.spawn(Workflow2.Executor.create(
                 organisation, repository,commit, "build", "performance-2", pipeline.getRef()),"performance-2");
         workflow1.tell(new Message.WorkflowMsg.Dependencies(new HashSet<>(), new HashSet<>(Arrays.asList(workflow2))));
         workflow2.tell(new Message.WorkflowMsg.Dependencies(new HashSet<>(Arrays.asList(workflow1)), new HashSet<>()));
@@ -69,11 +69,11 @@ public class WorkflowTest {
     public void workflowMustBeExecutedSuccessfully_dependencyScenario2() {
         TestProbe<Message> pipeline = testKit.createTestProbe();
 
-        ActorRef<Message> workflow1 = testKit.spawn(Workflow.Executor.create(
+        ActorRef<Message> workflow1 = testKit.spawn(Workflow2.Executor.create(
                 organisation, repository, commit,"build","performance-1", pipeline.getRef()),"performance-1");
-        ActorRef<Message> workflow2 = testKit.spawn(Workflow.Executor.create(
+        ActorRef<Message> workflow2 = testKit.spawn(Workflow2.Executor.create(
                 organisation, repository,commit, "build", "performance-2", pipeline.getRef()),"performance-2");
-        ActorRef<Message> workflow3 = testKit.spawn(Workflow.Executor.create(
+        ActorRef<Message> workflow3 = testKit.spawn(Workflow2.Executor.create(
                 organisation, repository,commit, "build", "performance-3", pipeline.getRef()),"performance-3");
         workflow1.tell(new Message.WorkflowMsg.Dependencies(new HashSet<>(), new HashSet<>(Arrays.asList(workflow2))));
         workflow2.tell(new Message.WorkflowMsg.Dependencies(new HashSet<>(Arrays.asList(workflow1)), new HashSet<>()));
