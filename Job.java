@@ -65,18 +65,18 @@ public class Job {
                         .timeout(description.getTimeoutSec(), TimeUnit.SECONDS)
                         .execute();
                 if (out.getExitValue() == 0) {
-                    workflowRef.tell(new Message.JobMsg.Success(getContext().getSelf(), out.getOutput().getUTF8()));
+                    workflowRef.tell(new Message.JobMsg.Success(description, getContext().getSelf(), out.getOutput().getUTF8()));
                 }
                 else {
-                    workflowRef.tell(new Message.JobMsg.Fail(getContext().getSelf(), out.getOutput().getUTF8()));
+                    workflowRef.tell(new Message.JobMsg.Fail(description, getContext().getSelf(), out.getOutput().getUTF8()));
                 }
             } catch (IOException | TimeoutException e) {
                 e.printStackTrace();
-                workflowRef.tell(new Message.JobMsg.Fail(getContext().getSelf(), e.getMessage()));
+                workflowRef.tell(new Message.JobMsg.Fail(description, getContext().getSelf(), e.getMessage()));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 e.printStackTrace();
-                workflowRef.tell(new Message.JobMsg.Fail(getContext().getSelf(), e.getMessage()));
+                workflowRef.tell(new Message.JobMsg.Fail(description, getContext().getSelf(), e.getMessage()));
             }
             return this;
         }

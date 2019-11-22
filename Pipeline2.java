@@ -67,7 +67,7 @@ interface Pipeline2 {
             }
 
             private Behavior<Message> onWorkflowSuccess(Message.WorkflowMsg.Success msg) {
-                workflowAnalyses.put(msg.getName(), msg.getAnalysis());
+                workflowAnalyses.put(msg.getDescription(), msg.getAnalysis());
                 if (workflowAnalyses.size() == workflows.size()) {
                     notifyAndShutdown();
                 }

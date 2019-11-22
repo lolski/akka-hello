@@ -26,36 +26,42 @@ public class JobTest {
     @Test
     public void jobMustReturnSuccess() {
         TestProbe<Message> workflow = testKit.createTestProbe();
-        ActorRef<Message> job = testKit.spawn(Job.Executor.create(new Job.Description("job", "echo hello", 2), workflow.getRef()));
+        Job.Description desc = new Job.Description("job", "echo hello", 2);
+        ActorRef<Message> job = testKit.spawn(Job.Executor.create(desc, workflow.getRef()));
         job.tell(new Message.JobMsg.Start());
-        workflow.expectMessage(new Message.JobMsg.Success(job, "hello\n"));
+        workflow.expectMessage(new Message.JobMsg.Success(desc, job, "hello\n"));
     }
 
     @Test
     public void jobMustThrowAnError() {
         TestProbe<Message> workflow = testKit.createTestProbe();
-        ActorRef<Message> job = testKit.spawn(Job.Executor.create(new Job.Description("job", "false", 2), workflow.getRef()));
+        Job.Description desc = new Job.Description("job", "false", 2);
+        ActorRef<Message> job = testKit.spawn(Job.Executor.create(desc, workflow.getRef()));
         job.tell(new Message.JobMsg.Start());
-        workflow.expectMessage(new Message.JobMsg.Fail(job, ""));
+        workflow.expectMessage(new Message.JobMsg.Fail(desc, job, ""));
     }
 
     @Test
     public void jobMustThrowAnError_2() {
         TestProbe<Message> workflow = testKit.createTestProbe();
-        ActorRef<Message> job = testKit.spawn(Job.Executor.create(new Job.Description("job", "should-fail-because-executable-does-not-exist", 2), workflow.getRef()));
+        Job.Description desc = new Job.Description("job", "should-fail-because-executable-does-not-exist", 2);
+        ActorRef<Message> job = testKit.spawn(Job.Executor.create(desc, workflow.getRef()));
         job.tell(new Message.JobMsg.Start());
         Message.JobMsg.Fail fail = workflow.expectMessageClass(Message.JobMsg.Fail.class);
-        assertEquals(fail.getJob(), job);
+        assertEquals(fail.getDescription(), desc);
+        assertEquals(fail.getExecutor(), job);
         assertTrue(fail.getAnalysis().startsWith("Could not execute "));
     }
 
     @Test
     public void jobMustThrowAnError_ifTimedOut() {
         TestProbe<Message> workflow = testKit.createTestProbe();
-        ActorRef<Message> job = testKit.spawn(Job.Executor.create(new Job.Description("job", "sleep 20", 2), workflow.getRef()));
+        Job.Description desc = new Job.Description("job", "sleep 20", 2);
+        ActorRef<Message> job = testKit.spawn(Job.Executor.create(desc, workflow.getRef()));
         job.tell(new Message.JobMsg.Start());
         Message.JobMsg.Fail fail = workflow.expectMessageClass(Message.JobMsg.Fail.class);
-        assertEquals(fail.getJob(), job);
+        assertEquals(fail.getDescription(), desc);
+        assertEquals(fail.getExecutor(), job);
         assertTrue(fail.getAnalysis().startsWith("Timed out waiting for "));
     }
 }

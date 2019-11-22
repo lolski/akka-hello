@@ -5,11 +5,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -32,7 +30,7 @@ public class WorkflowTest {
         Workflow.Description worflowDesc = new Workflow.Description( " workflow", new HashMap<>());
         ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()), worflowDesc.getName());
         workflow.tell(new Message.WorkflowMsg.Start());
-        pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc.getName(), workflow, "{analysis result placeholder}"));
+        pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc, workflow, "{analysis result placeholder}"));
     }
 
     @Test
@@ -43,7 +41,7 @@ public class WorkflowTest {
         Workflow.Description worflowDesc = new Workflow.Description( " workflow", jobs);
         ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()), worflowDesc.getName());
         workflow.tell(new Message.WorkflowMsg.Start());
-        pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc.getName(), workflow, "{analysis result placeholder}"));
+        pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc, workflow, "{analysis result placeholder}"));
     }
 
     @Test
@@ -55,7 +53,7 @@ public class WorkflowTest {
         Workflow.Description worflowDesc = new Workflow.Description( " workflow", jobs);
         ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()), worflowDesc.getName());
         workflow.tell(new Message.WorkflowMsg.Start());
-        pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc.getName(), workflow, "{analysis result placeholder}"));
+        pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc, workflow, "{analysis result placeholder}"));
     }
 
     @Test
@@ -67,7 +65,7 @@ public class WorkflowTest {
         Workflow.Description worflowDesc = new Workflow.Description( " workflow", jobs);
         ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()), worflowDesc.getName());
         workflow.tell(new Message.WorkflowMsg.Start());
-        pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc.getName(), workflow, "{analysis result placeholder}"));
+        pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc, workflow, "{analysis result placeholder}"));
     }
 
     @Test
@@ -79,7 +77,7 @@ public class WorkflowTest {
         Workflow.Description worflowDesc = new Workflow.Description( " workflow", jobs);
         ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()), worflowDesc.getName());
         workflow.tell(new Message.WorkflowMsg.Start());
-        pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc.getName(), workflow, "{analysis result placeholder}"));
+        pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc, workflow, "{analysis result placeholder}"));
     }
 
     @Test
@@ -91,7 +89,7 @@ public class WorkflowTest {
         Workflow.Description worflowDesc = new Workflow.Description( " workflow", jobs);
         ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()), worflowDesc.getName());
         workflow.tell(new Message.WorkflowMsg.Start());
-        pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc.getName(), workflow, "{analysis result placeholder}"));
+        pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc, workflow, "{analysis result placeholder}"));
     }
 
     private Job.Description jobSuccess(String name) {

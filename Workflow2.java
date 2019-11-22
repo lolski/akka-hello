@@ -86,7 +86,7 @@ class Workflow2 {
         }
 
         private Behavior<Message> onWorkflowSuccess(Message.WorkflowMsg.Success msg) {
-            System.out.println(this + ": " + msg.getName() + " succeeded.");
+            System.out.println(this + ": " + msg.getDescription() + " succeeded.");
             dependsOnAnalyses.add(msg.getAnalysis());
             if (dependsOnAnalyses.size() == dependsOn.size()) {
                 executeAll();
