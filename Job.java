@@ -8,6 +8,7 @@ import org.zeroturnaround.exec.ProcessExecutor;
 import org.zeroturnaround.exec.ProcessResult;
 
 import java.io.IOException;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -33,6 +34,21 @@ public class Job {
 
         long getTimeoutSec() {
             return timeoutSec;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Description that = (Description) o;
+            return timeoutSec == that.timeoutSec &&
+                    Objects.equals(job, that.job) &&
+                    Objects.equals(script, that.script);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(job, script, timeoutSec);
         }
     }
 

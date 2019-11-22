@@ -28,7 +28,7 @@ public class WorkflowTest {
     public void workflowMustReturnSuccess_emptyJobs() {
         TestProbe<Message> pipeline = testKit.createTestProbe();
         Workflow.Description worflowDesc = new Workflow.Description( " workflow", new HashMap<>());
-        ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()), worflowDesc.getName());
+        ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()));
         workflow.tell(new Message.WorkflowMsg.Start());
         pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc, workflow, "{analysis result placeholder}"));
     }
@@ -39,7 +39,7 @@ public class WorkflowTest {
         Map<Job.Description, Set<Job.Description>> jobs = new HashMap<>();
         jobs.put(jobSuccess("run-kgms-node-1"), new HashSet<>());
         Workflow.Description worflowDesc = new Workflow.Description( " workflow", jobs);
-        ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()), worflowDesc.getName());
+        ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()));
         workflow.tell(new Message.WorkflowMsg.Start());
         pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc, workflow, "{analysis result placeholder}"));
     }
@@ -51,7 +51,7 @@ public class WorkflowTest {
         jobs.put(jobSuccess("run-kgms-node-1"), new HashSet<>());
         jobs.put(jobSuccess("run-kgms-node-2"), new HashSet<>());
         Workflow.Description worflowDesc = new Workflow.Description( " workflow", jobs);
-        ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()), worflowDesc.getName());
+        ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()));
         workflow.tell(new Message.WorkflowMsg.Start());
         pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc, workflow, "{analysis result placeholder}"));
     }
@@ -60,10 +60,10 @@ public class WorkflowTest {
     public void workflowMustReturnSuccess_twoJobs_withDeps() {
         TestProbe<Message> pipeline = testKit.createTestProbe();
         Map<Job.Description, Set<Job.Description>> jobs = new HashMap<>();
-        jobs.put(jobSuccess("run-kgms-node-1"), new HashSet<>(Arrays.asList(jobSuccess("test-performance"))));
-        jobs.put(jobSuccess("run-kgms-node-2"), new HashSet<>(Arrays.asList(jobSuccess("test-performance"))));
+        jobs.put(jobSuccess("test-performance"), new HashSet<>(Arrays.asList(jobSuccess("run-kgms-node-1"))));
+        jobs.put(jobSuccess("run-kgms-node-1"), new HashSet<>());
         Workflow.Description worflowDesc = new Workflow.Description( " workflow", jobs);
-        ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()), worflowDesc.getName());
+        ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()));
         workflow.tell(new Message.WorkflowMsg.Start());
         pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc, workflow, "{analysis result placeholder}"));
     }
@@ -72,24 +72,25 @@ public class WorkflowTest {
     public void workflowMustReturnSuccess_threeJobs() {
         TestProbe<Message> pipeline = testKit.createTestProbe();
         Map<Job.Description, Set<Job.Description>> jobs = new HashMap<>();
-        jobs.put(jobSuccess("run-kgms-node-1"), new HashSet<>(Arrays.asList(jobSuccess("test-performance"))));
+        jobs.put(jobSuccess("test-performance"), new HashSet<>(Arrays.asList(jobSuccess("run-kgms-node-1"))));
+        jobs.put(jobSuccess("run-kgms-node-1"), new HashSet<>());
         jobs.put(jobSuccess("an-independent-job"), new HashSet<>());
         Workflow.Description worflowDesc = new Workflow.Description( " workflow", jobs);
-        ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()), worflowDesc.getName());
+        ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()));
         workflow.tell(new Message.WorkflowMsg.Start());
         pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc, workflow, "{analysis result placeholder}"));
     }
 
     @Test
-    public void workflowMustReturnFail_oneOutOfTwoJobsFailed() {
+    public void workflowMustReturnFail_oneOutOfThreeJobsFailed() {
         TestProbe<Message> pipeline = testKit.createTestProbe();
         Map<Job.Description, Set<Job.Description>> jobs = new HashMap<>();
-        jobs.put(jobSuccess("run-kgms-node-1"), new HashSet<>(Arrays.asList(jobSuccess("test-performance"))));
-        jobs.put(jobFail("run-kgms-node-2"), new HashSet<>(Arrays.asList(jobSuccess("test-performance"))));
+        jobs.put(jobSuccess("test-performance"), new HashSet<>(Arrays.asList(jobSuccess("run-kgms-node-2"))));
+        jobs.put(jobSuccess("run-kgms-node-2"), new HashSet<>(Arrays.asList(jobFail("run-kgms-node-1"))));
         Workflow.Description worflowDesc = new Workflow.Description( " workflow", jobs);
-        ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()), worflowDesc.getName());
+        ActorRef<Message> workflow = testKit.spawn(Workflow.Executor.create(worflowDesc, pipeline.getRef()));
         workflow.tell(new Message.WorkflowMsg.Start());
-        pipeline.expectMessage(new Message.WorkflowMsg.Success(worflowDesc, workflow, "{analysis result placeholder}"));
+        pipeline.expectMessage(new Message.WorkflowMsg.Fail(worflowDesc, workflow, "{analysis result placeholder}"));
     }
 
     private Job.Description jobSuccess(String name) {
