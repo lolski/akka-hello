@@ -1,19 +1,14 @@
 import akka.actor.testkit.typed.javadsl.ActorTestKit;
 import akka.actor.testkit.typed.javadsl.TestProbe;
 import akka.actor.typed.ActorRef;
-import akka.actor.typed.Behavior;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Arrays;
-import java.util.HashSet;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class JobTest {
-    private final String organisation = "graknlabs-test";
-    private final String repository = "grakn";
-    private final String commit = "1234567";
-
     private ActorTestKit testKit;
 
     @Before
@@ -26,62 +21,41 @@ public class JobTest {
         testKit.shutdownTestKit();
     }
 
+    // TODO: test full fledged, multi-line script
+
     @Test
-    public void jobMustBeExecutedSuccessfully_noDependencies() {
+    public void jobMustReturnSuccess() {
         TestProbe<Message> workflow = testKit.createTestProbe();
-        Behavior<Message> jobBehavior =
-                Job.Executor.create(organisation, repository, commit, "build", "performance", "job", workflow.getRef());
-        ActorRef<Message> job = testKit.spawn(jobBehavior);
+        ActorRef<Message> job = testKit.spawn(Job.Executor.create("job", "echo hello", 2, workflow.getRef()));
         job.tell(new Message.JobMsg.Start());
-        workflow.expectMessageClass(Message.JobMsg.Success.class);
-        workflow.expectNoMessage();
+        workflow.expectMessage(new Message.JobMsg.Success(job, "hello\n"));
     }
 
     @Test
-    public void jobMustNotBeExecuted_ifDependenciesUnmet() {
+    public void jobMustThrowAnError() {
         TestProbe<Message> workflow = testKit.createTestProbe();
-        Behavior<Message> jobBehavior =
-                Job.Executor.create(organisation, repository, commit, "build", "workflow", "test-job", workflow.getRef());
-        TestProbe<Message> job1 = testKit.createTestProbe();
-        ActorRef<Message> job2 = testKit.spawn(jobBehavior);
-        job2.tell(new Message.JobMsg.Dependencies(new HashSet<>(Arrays.asList(job1.getRef())), new HashSet<>()));
-        job2.tell(new Message.JobMsg.Start());
-        workflow.expectNoMessage();
+        ActorRef<Message> job = testKit.spawn(Job.Executor.create("job", "false", 2, workflow.getRef()));
+        job.tell(new Message.JobMsg.Start());
+        workflow.expectMessage(new Message.JobMsg.Fail(job, ""));
     }
 
     @Test
-    public void jobMustBeExecutedSuccessfully_dependencyScenario1() {
+    public void jobMustThrowAnError_2() {
         TestProbe<Message> workflow = testKit.createTestProbe();
-        ActorRef<Message> job1 = testKit.spawn(Job.Executor.create(
-                organisation, repository, commit,"build","workflow", "test-job-1", workflow.getRef()),"test-job-1");
-        ActorRef<Message> job2 = testKit.spawn(Job.Executor.create(
-                organisation, repository,commit, "build", "workflow", "test-job-2", workflow.getRef()),"test-job-2");
-        job1.tell(new Message.JobMsg.Dependencies(new HashSet<>(), new HashSet<>(Arrays.asList(job2))));
-        job2.tell(new Message.JobMsg.Dependencies(new HashSet<>(Arrays.asList(job1)), new HashSet<>()));
-        job1.tell(new Message.JobMsg.Start());
-        job2.tell(new Message.JobMsg.Start());
-        workflow.expectMessageClass(Message.JobMsg.Success.class);
-        workflow.expectMessageClass(Message.JobMsg.Success.class);
-        workflow.expectNoMessage();
+        ActorRef<Message> job = testKit.spawn(Job.Executor.create("job", "should-fail-because-executable-does-not-exist", 2, workflow.getRef()));
+        job.tell(new Message.JobMsg.Start());
+        Message.JobMsg.Fail fail = workflow.expectMessageClass(Message.JobMsg.Fail.class);
+        assertEquals(fail.getJob(), job);
+        assertTrue(fail.getAnalysis().startsWith("Could not execute "));
     }
 
     @Test
-    public void jobMustBeExecutedSuccessfully_dependencyScenario2() {
+    public void jobMustThrowAnError_ifTimedOut() {
         TestProbe<Message> workflow = testKit.createTestProbe();
-        ActorRef<Message> job1 = testKit.spawn(Job.Executor.create(
-                organisation, repository, commit,"build","workflow", "test-job-1", workflow.getRef()),"test-job-1");
-        ActorRef<Message> job2 = testKit.spawn(Job.Executor.create(
-                organisation, repository,commit, "build", "workflow", "test-job-2", workflow.getRef()),"test-job-2");
-        ActorRef<Message> job3 = testKit.spawn(Job.Executor.create(
-                organisation, repository,commit, "build", "workflow", "test-job-3", workflow.getRef()),"test-job-3");
-        job1.tell(new Message.JobMsg.Dependencies(new HashSet<>(), new HashSet<>(Arrays.asList(job2))));
-        job2.tell(new Message.JobMsg.Dependencies(new HashSet<>(Arrays.asList(job1)), new HashSet<>()));
-        job1.tell(new Message.JobMsg.Start());
-        job2.tell(new Message.JobMsg.Start());
-        job3.tell(new Message.JobMsg.Start());
-        workflow.expectMessageClass(Message.JobMsg.Success.class);
-        workflow.expectMessageClass(Message.JobMsg.Success.class);
-        workflow.expectMessageClass(Message.JobMsg.Success.class);
-        workflow.expectNoMessage();
+        ActorRef<Message> job = testKit.spawn(Job.Executor.create("job", "sleep 20", 2, workflow.getRef()));
+        job.tell(new Message.JobMsg.Start());
+        Message.JobMsg.Fail fail = workflow.expectMessageClass(Message.JobMsg.Fail.class);
+        assertEquals(fail.getJob(), job);
+        assertTrue(fail.getAnalysis().startsWith("Timed out waiting for "));
     }
 }

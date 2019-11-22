@@ -1,5 +1,6 @@
 import akka.actor.typed.ActorRef;
 
+import java.util.Objects;
 import java.util.Set;
 
 public interface Message {
@@ -163,8 +164,22 @@ public interface Message {
                 return job;
             }
 
-            public String getAnalysis() {
+            String getAnalysis() {
                 return analysis;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (o == null || getClass() != o.getClass()) return false;
+                Success success = (Success) o;
+                return Objects.equals(job, success.job) &&
+                        Objects.equals(analysis, success.analysis);
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(job, analysis);
             }
         }
 
@@ -183,6 +198,20 @@ public interface Message {
 
             public String getAnalysis() {
                 return analysis;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (o == null || getClass() != o.getClass()) return false;
+                Fail fail = (Fail) o;
+                return Objects.equals(job, fail.job) &&
+                        Objects.equals(analysis, fail.analysis);
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(job, analysis);
             }
         }
     }
