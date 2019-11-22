@@ -84,12 +84,51 @@ public interface Message {
         static class Success implements Message {
             private String name;
             private ActorRef<Message> executor;
-            private String result;
+            private String analysis;
 
-            Success(String name, ActorRef<Message> executor, String result) {
+            Success(String name, ActorRef<Message> executor, String analysis) {
                 this.name = name;
                 this.executor = executor;
-                this.result = result;
+                this.analysis = analysis;
+            }
+
+            ActorRef<Message> getExecutor() {
+                return executor;
+            }
+
+            String getAnalysis() {
+                return analysis;
+            }
+
+            public String getName() {
+                return name;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (o == null || getClass() != o.getClass()) return false;
+                Success success = (Success) o;
+                return Objects.equals(name, success.name) &&
+                        Objects.equals(executor, success.executor) &&
+                        Objects.equals(analysis, success.analysis);
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(name, executor, analysis);
+            }
+        }
+
+        static class Fail implements Message {
+            private String name;
+            private ActorRef<Message> executor;
+            private String analysis;
+
+            Fail(String name, ActorRef<Message> executor, String analysis) {
+                this.name = name;
+                this.executor = executor;
+                this.analysis = analysis;
             }
 
             public String getName() {
@@ -101,31 +140,22 @@ public interface Message {
             }
 
             String getAnalysis() {
-                return result;
-            }
-        }
-
-        static class Fail implements Message {
-            private String name;
-            private ActorRef<Message> executor;
-            private String result;
-
-            Fail(String name, ActorRef<Message> executor, String result) {
-                this.name = name;
-                this.executor = executor;
-                this.result = result;
+                return analysis;
             }
 
-            public String getName() {
-                return name;
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (o == null || getClass() != o.getClass()) return false;
+                Fail fail = (Fail) o;
+                return Objects.equals(name, fail.name) &&
+                        Objects.equals(executor, fail.executor) &&
+                        Objects.equals(analysis, fail.analysis);
             }
 
-            ActorRef<Message> getExecutor() {
-                return executor;
-            }
-
-            String getResult() {
-                return result;
+            @Override
+            public int hashCode() {
+                return Objects.hash(name, executor, analysis);
             }
         }
     }
